@@ -1,0 +1,75 @@
+export default defineNuxtConfig({
+  ssr: false,
+  
+  compatibilityDate: '2026-04-03',
+  
+  app: {
+    head: {
+      charset: 'utf-8',
+      viewport: 'width=device-width, initial-scale=1',
+      title: 'JORDAN - Sistema de Control Interno',
+      meta: [
+        {
+          name: 'description',
+          content: 'Sistema de control interno para Purificadora de Agua JORDAN',
+        },
+      ],
+    },
+  },
+
+  css: ['~/assets/styles/globals.css', '~/assets/styles/tailwind.css'],
+
+  modules: [
+    '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
+  ],
+
+  pinia: {
+    autoImports: ['defineStore', 'storeToRefs'],
+  },
+
+  runtimeConfig: {
+    public: {
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3001/api',
+    },
+  },
+
+  typescript: {
+    strict: true,
+    typeCheck: true,
+  },
+
+  imports: {
+    dirs: ['./stores', './composables', './utils'],
+  },
+
+  components: {
+    dirs: [
+      {
+        path: '~/components',
+        pathPrefix: false,
+      },
+    ],
+  },
+
+  build: {
+    transpile: ['trpc-nuxt'],
+  },
+
+  devtools: {
+    enabled: false,
+  },
+
+  nitro: {
+    prerender: {
+      crawlLinks: false,
+      routes: ['/sitemap.xml'],
+    },
+  },
+
+  vite: {
+    define: {
+      '__VITE_BUILD__': 'false',
+    },
+  },
+});

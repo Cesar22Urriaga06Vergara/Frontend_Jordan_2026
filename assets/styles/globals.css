@@ -1,0 +1,45 @@
+:root {
+  --color-bg: #f3f4f6;
+  --color-surface: #ffffff;
+  --color-text: #111827;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#__nuxt {
+  margin: 0;
+  min-height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ── Utility classes ─────────────────────────────────── */
+.form-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
+    focus:outline-none focus:ring-2 focus:ring-blue-400
+    disabled:opacity-50 disabled:bg-gray-50;
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium
+    hover:bg-blue-700 active:scale-95 transition disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium
+    hover:bg-gray-200 active:scale-95 transition;
+}
+
+.btn-danger {
+  @apply px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium
+    hover:bg-red-100 active:scale-95 transition;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 p-5;
+}
