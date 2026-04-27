@@ -6,12 +6,12 @@
         v-model="search"
         type="text"
         placeholder="Buscar producto..."
-        class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-400"
         @input="debouncedSearch"
       />
       <select
         v-model="filters.activo"
-        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none w-full sm:w-auto"
         @change="loadProductos"
       >
         <option value="">Todos</option>
@@ -19,10 +19,10 @@
         <option value="false">Inactivos</option>
       </select>
       <button
-        class="ml-auto bg-blue-950 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors"
+        class="ml-auto bg-blue-950 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors flex items-center gap-2"
         @click="openModal()"
       >
-        + Nuevo producto
+        <Plus :size="16" /> Nuevo producto
       </button>
     </div>
 
@@ -31,10 +31,10 @@
       <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-xs uppercase font-semibold">
           <tr>
-            <th class="px-4 py-3 text-left">Código</th>
-            <th class="px-4 py-3 text-left">Nombre</th>
-            <th class="px-4 py-3 text-left">Categoría</th>
-            <th class="px-4 py-3 text-left">Unidad</th>
+            <th class="px-4 py-3 text-center">Código</th>
+            <th class="px-4 py-3 text-center">Nombre</th>
+            <th class="px-4 py-3 text-center">Categoría</th>
+            <th class="px-4 py-3 text-center">Unidad</th>
             <th class="px-4 py-3 text-center">Estado</th>
             <th class="px-4 py-3 text-center">Acciones</th>
           </tr>
@@ -62,9 +62,15 @@
               >{{ p.activo ? 'Activo' : 'Inactivo' }}</span>
             </td>
             <td class="px-4 py-3 text-center flex items-center justify-center gap-2">
-              <button class="text-blue-600 hover:underline text-xs" @click="openModal(p)">Editar</button>
-              <button class="text-gray-500 hover:underline text-xs" @click="toggleActivo(p)">
+              <button class="flex items-center gap-1 text-blue-600 hover:underline text-xs" @click="openModal(p)">
+                <Edit :size="14" /> Editar
+              </button>
+              <button class="flex items-center gap-1 hover:underline text-xs" :class="p.activo ? 'text-orange-600' : 'text-green-600'" @click="toggleActivo(p)">
+                <CheckCircle v-if="p.activo" :size="14" class="text-green-600" />
                 {{ p.activo ? 'Desactivar' : 'Activar' }}
+              </button>
+              <button class="flex items-center gap-1 text-red-600 hover:underline text-xs" @click="confirmarEliminar(p)">
+                <Trash2 :size="14" /> Eliminar
               </button>
             </td>
           </tr>
@@ -98,13 +104,13 @@
             {{ editItem ? 'Editar producto' : 'Nuevo producto' }}
           </h3>
           <form class="space-y-3" @submit.prevent="saveProducto">
-            <FormField label="Código" required>
+            <FormField label="Código" required :error="errors.codigo">
               <input v-model="form.codigo" type="text" class="form-input" :disabled="!!editItem" />
             </FormField>
-            <FormField label="Nombre" required>
+            <FormField label="Nombre" required :error="errors.nombre">
               <input v-model="form.nombre" type="text" class="form-input" />
             </FormField>
-            <FormField label="Categoría" required>
+            <FormField label="Categoría" required :error="errors.categoria">
               <select v-model="form.categoria" class="form-input">
                 <option value="">Seleccionar categoría…</option>
                 <option value="Normal">Normal</option>
@@ -115,7 +121,7 @@
                 <option value="Granel">Granel</option>
               </select>
             </FormField>
-            <FormField label="Unidad" required>
+            <FormField label="Unidad" required :error="errors.unidad">
               <input v-model="form.unidad" type="text" class="form-input" />
             </FormField>
             <FormField label="Descripción">
@@ -133,10 +139,32 @@
         </div>
       </div>
     </Teleport>
+    <!-- Modal confirmación eliminar -->
+    <Teleport to="body">
+      <div v-if="showConfirmDelete" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+          <h3 class="font-semibold text-gray-800 mb-2">¿Eliminar producto?</h3>
+          <p class="text-sm text-gray-600 mb-5">
+            ¿Seguro que deseas eliminar <strong>{{ productoAEliminar?.nombre }}</strong>?
+            Esta acción no se puede deshacer. Si el producto tiene movimientos registrados no podrá eliminarse.
+          </p>
+          <div class="flex justify-end gap-3">
+            <button class="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50" @click="showConfirmDelete = false">
+              Cancelar
+            </button>
+            <button class="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700" @click="eliminarProducto">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Edit, CheckCircle, Plus, Trash2 } from 'lucide-vue-next'
+
 definePageMeta({ middleware: 'auth' })
 
 const api = useApi()
@@ -147,6 +175,8 @@ const loading = ref(false)
 const saving = ref(false)
 const showModal = ref(false)
 const editItem = ref<any>(null)
+const showConfirmDelete = ref(false)
+const productoAEliminar = ref<any>(null)
 const search = ref('')
 const productos = ref<any[]>([])
 const filters = reactive({ activo: '' })
@@ -155,6 +185,15 @@ const pagination = reactive({ page: 1, total: 0, totalPages: 1 })
 const form = reactive({
   codigo: '', nombre: '', categoria: '', unidad: '', descripcion: '',
 })
+const errors = reactive({ codigo: '', nombre: '', categoria: '', unidad: '' })
+
+function validarForm(): boolean {
+  errors.codigo = !form.codigo.trim() ? 'El código es requerido' : ''
+  errors.nombre = !form.nombre.trim() ? 'El nombre es requerido' : ''
+  errors.categoria = !form.categoria ? 'La categoría es requerida' : ''
+  errors.unidad = !form.unidad.trim() ? 'La unidad es requerida' : ''
+  return !errors.codigo && !errors.nombre && !errors.categoria && !errors.unidad
+}
 
 let searchTimeout: ReturnType<typeof setTimeout>
 const debouncedSearch = () => {
@@ -200,6 +239,8 @@ function openModal(item?: any) {
 }
 
 async function saveProducto() {
+  if (!validarForm()) return
+  
   saving.value = true
   try {
     if (editItem.value) {
@@ -225,6 +266,24 @@ async function toggleActivo(p: any) {
     await loadProductos()
   } catch {
     error('Error al actualizar estado')
+  }
+}
+
+function confirmarEliminar(p: any) {
+  productoAEliminar.value = p
+  showConfirmDelete.value = true
+}
+
+async function eliminarProducto() {
+  if (!productoAEliminar.value) return
+  try {
+    await api.delete(`/catalogos/productos/${productoAEliminar.value.id}`)
+    success(`Producto "${productoAEliminar.value.nombre}" eliminado`)
+    showConfirmDelete.value = false
+    productoAEliminar.value = null
+    await loadProductos()
+  } catch (e: any) {
+    error(apiResponse.errorMessage(e))
   }
 }
 

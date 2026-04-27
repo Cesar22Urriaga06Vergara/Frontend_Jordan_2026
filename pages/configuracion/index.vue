@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-6 max-w-4xl mx-auto">
+  <div class="space-y-6 max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold text-gray-800">Configuración</h1>
 
     <!-- Tabs -->
@@ -136,6 +136,41 @@
         </div>
       </div>
     </div>
+
+    <!-- Datos de la empresa -->
+    <div v-if="tabActivo === 'empresa'" class="card space-y-4 max-w-lg">
+      <h2 class="font-semibold text-gray-700">Datos de la empresa</h2>
+
+      <div v-if="loadingEmpresa" class="text-sm text-gray-400">Cargando…</div>
+
+      <template v-else>
+        <FormField label="Nombre de la empresa *">
+          <input v-model="empresaForm.nombre" class="form-input" placeholder="Ej: Aguas Jordan" />
+        </FormField>
+        <FormField label="NIT">
+          <input v-model="empresaForm.nit" class="form-input" placeholder="Ej: 900.123.456-7" />
+        </FormField>
+        <FormField label="Dirección">
+          <input v-model="empresaForm.direccion" class="form-input" />
+        </FormField>
+        <FormField label="Ciudad">
+          <input v-model="empresaForm.ciudad" class="form-input" />
+        </FormField>
+        <FormField label="Teléfono">
+          <input v-model="empresaForm.telefono" class="form-input" type="tel" />
+        </FormField>
+        <FormField label="Email">
+          <input v-model="empresaForm.email" class="form-input" type="email" />
+        </FormField>
+        <FormField label="Eslogan">
+          <input v-model="empresaForm.slogan" class="form-input" placeholder="Ej: Agua pura para tu hogar" />
+        </FormField>
+
+        <button class="btn-primary" :disabled="savingEmpresa" @click="guardarEmpresa">
+          {{ savingEmpresa ? 'Guardando…' : 'Guardar cambios' }}
+        </button>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -152,6 +187,7 @@ const apiResponse = useApiResponse()
 const TABS = [
   { id: 'perfil', label: 'Mi perfil' },
   { id: 'usuarios', label: 'Usuarios del sistema' },
+  { id: 'empresa', label: 'Datos de la empresa' },
 ]
 const tabActivo = ref('perfil')
 
@@ -259,5 +295,54 @@ async function crearUsuario() {
   }
 }
 
-watch(tabActivo, t => { if (t === 'usuarios') fetchUsuarios() })
+// Empresa
+const loadingEmpresa = ref(false)
+const savingEmpresa = ref(false)
+const empresaForm = reactive({
+  nombre: '',
+  nit: '',
+  direccion: '',
+  ciudad: '',
+  telefono: '',
+  email: '',
+  slogan: '',
+})
+
+async function fetchEmpresa() {
+  loadingEmpresa.value = true
+  try {
+    const res = await api.get('/configuracion/empresa')
+    const d = apiResponse.unwrap(res) as any ?? res?.data ?? res
+    Object.assign(empresaForm, {
+      nombre: d.nombre ?? '',
+      nit: d.nit ?? '',
+      direccion: d.direccion ?? '',
+      ciudad: d.ciudad ?? '',
+      telefono: d.telefono ?? '',
+      email: d.email ?? '',
+      slogan: d.slogan ?? '',
+    })
+  } catch {
+    notify.error('Error al cargar datos de la empresa')
+  } finally {
+    loadingEmpresa.value = false
+  }
+}
+
+async function guardarEmpresa() {
+  savingEmpresa.value = true
+  try {
+    await api.patch('/configuracion/empresa', { ...empresaForm })
+    notify.success('Datos de la empresa guardados')
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+  } finally {
+    savingEmpresa.value = false
+  }
+}
+
+watch(tabActivo, t => {
+  if (t === 'usuarios') fetchUsuarios()
+  if (t === 'empresa') fetchEmpresa()
+})
 </script>

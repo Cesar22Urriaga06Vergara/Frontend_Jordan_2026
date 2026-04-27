@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <h1 class="text-2xl font-bold text-gray-800">Catálogo de Trabajadores</h1>
       <button class="btn-primary" @click="abrirModal()">+ Nuevo trabajador</button>
@@ -28,16 +28,16 @@
     <div class="card overflow-x-auto p-0">
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wide">
+          <tr class="text-center text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wide">
             <th class="px-4 py-3 font-medium">Código</th>
             <th class="px-4 py-3 font-medium">Nombre</th>
             <th class="px-4 py-3 font-medium">Cédula</th>
             <th class="px-4 py-3 font-medium">Tipo</th>
             <th class="px-4 py-3 font-medium">Teléfono</th>
-            <th class="px-4 py-3 font-medium text-right">Tarifa base ($)</th>
-            <th class="px-4 py-3 font-medium text-right">Saldo operativo ($)</th>
+            <th class="px-4 py-3 font-medium">Tarifa base ($)</th>
+            <th class="px-4 py-3 font-medium">Saldo operativo ($)</th>
             <th class="px-4 py-3 font-medium">Estado</th>
-            <th class="px-4 py-3 font-medium text-right">Acciones</th>
+            <th class="px-4 py-3 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -73,12 +73,17 @@
             </td>
             <td class="px-4 py-3 text-right">
               <div class="flex justify-end gap-2">
-                <button class="text-xs text-gray-600 hover:underline" @click="abrirModal(t)">Editar</button>
+                <button class="flex items-center gap-1 text-xs text-gray-600 hover:underline" @click="abrirModal(t)">
+                  <Edit :size="14" /> Editar
+                </button>
                 <button
-                  class="text-xs hover:underline"
+                  class="flex items-center gap-1 text-xs hover:underline"
                   :class="t.activo ? 'text-orange-600' : 'text-green-600'"
                   @click="toggleActivo(t)"
-                >{{ t.activo ? 'Desactivar' : 'Activar' }}</button>
+                >
+                  <CheckCircle v-if="t.activo" :size="14" class="text-green-600" />
+                  {{ t.activo ? 'Desactivar' : 'Activar' }}
+                </button>
               </div>
             </td>
           </tr>
@@ -110,7 +115,7 @@
         </div>
 
         <div class="grid grid-cols-2 gap-4" :class="{ 'opacity-50 pointer-events-none': loadingModal }">
-          <FormField label="Código *">
+          <FormField label="Código *" :error="errors.codigo">
             <input v-model="form.codigo" class="form-input" :disabled="!!editando" />
           </FormField>
           <FormField label="Tipo *">
@@ -118,10 +123,10 @@
               <option v-for="tp in TIPOS" :key="tp" :value="tp">{{ tp }}</option>
             </select>
           </FormField>
-          <FormField label="Nombre completo *" class="col-span-2">
+          <FormField label="Nombre completo *" :error="errors.nombre" class="col-span-2">
             <input v-model="form.nombre" class="form-input" />
           </FormField>
-          <FormField label="Cédula *">
+          <FormField label="Cédula *" :error="errors.cedula">
             <input v-model="form.cedula" class="form-input" />
           </FormField>
           <FormField label="Teléfono">
@@ -136,7 +141,7 @@
               <option value="POR_HORA">Por hora</option>
             </select>
           </FormField>
-          <FormField :label="form.modalidadPago === 'POR_HORA' ? 'Tarifa base por hora *' : 'Tarifa base por jornada *'">
+          <FormField :label="form.modalidadPago === 'POR_HORA' ? 'Tarifa base por hora *' : 'Tarifa base por jornada *'" :error="errors.valorPago">
             <input
               v-model.number="form.valorPago"
               class="form-input"
@@ -164,6 +169,7 @@
 
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formats'
+import { Edit, CheckCircle, Plus } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -192,6 +198,16 @@ const form = reactive({
   direccion: '', tipoTrabajador: 'PERMANENTE',
   modalidadPago: 'POR_JORNADA', valorPago: undefined as number | undefined,
 })
+const errors = reactive({ codigo: '', nombre: '', cedula: '', valorPago: '' })
+
+function validarForm(): boolean {
+  errors.codigo = !form.codigo.trim() ? 'El código es requerido' : ''
+  errors.nombre = !form.nombre.trim() ? 'El nombre es requerido' : ''
+  errors.cedula = !form.cedula.trim() ? 'La cédula es requerida' : ''
+  errors.valorPago = !editando.value && (!form.valorPago || form.valorPago <= 0) ? 'El valor es requerido' : 
+                     form.valorPago && form.valorPago <= 0 ? 'Debe ser mayor a 0' : ''
+  return !errors.codigo && !errors.nombre && !errors.cedula && !errors.valorPago
+}
 
 async function fetchTrabajadores() {
   loading.value = true
@@ -264,20 +280,7 @@ async function abrirModal(t?: any) {
 }
 
 async function guardar() {
-  if (!form.codigo.trim() || !form.nombre.trim() || !form.cedula.trim()) {
-    notify.error('Código, nombre y cédula son requeridos')
-    return
-  }
-  
-  // Validar precio: requerido si es nuevo, opcional si edita (pero si lo proporciona, debe ser válido)
-  if (!editando.value && (!form.valorPago || form.valorPago <= 0)) {
-    notify.error('Valor de pago es requerido para nuevos trabajadores')
-    return
-  }
-  if (form.valorPago && form.valorPago <= 0) {
-    notify.error('El valor de pago debe ser mayor a 0')
-    return
-  }
+  if (!validarForm()) return
   
   saving.value = true
   try {

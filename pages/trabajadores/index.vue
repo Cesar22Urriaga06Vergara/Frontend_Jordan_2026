@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <h1 class="text-2xl font-bold text-gray-800">Trabajadores</h1>
 
     <!-- Tabs -->
@@ -20,12 +20,12 @@
       <div class="card overflow-x-auto p-0">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-gray-500 border-b text-xs uppercase">
+            <tr class="text-center text-gray-500 border-b text-xs uppercase">
               <th class="px-4 py-3 font-medium">Trabajador</th>
               <th class="px-4 py-3 font-medium">Código</th>
-              <th class="px-4 py-3 font-medium text-right">Saldo total ($)</th>
+              <th class="px-4 py-3 font-medium">Saldo total ($)</th>
               <th class="px-4 py-3 font-medium">Estado</th>
-              <th class="px-4 py-3 font-medium text-right">Acciones</th>
+              <th class="px-4 py-3 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -104,11 +104,11 @@
         </div>
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-gray-500 border-b text-xs uppercase">
+            <tr class="text-center text-gray-500 border-b text-xs uppercase">
               <th class="pb-2 font-medium">Trabajador</th>
               <th class="pb-2 font-medium">Labor</th>
-              <th class="pb-2 font-medium text-center">Cant.</th>
-              <th class="pb-2 font-medium text-right">Valor</th>
+              <th class="pb-2 font-medium">Cant.</th>
+              <th class="pb-2 font-medium">Valor</th>
             </tr>
           </thead>
           <tbody>
@@ -138,14 +138,14 @@
       <div class="card overflow-x-auto p-0">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-gray-500 border-b text-xs uppercase">
+            <tr class="text-center text-gray-500 border-b text-xs uppercase">
               <th class="px-4 py-3 font-medium">Trabajador</th>
               <th class="px-4 py-3 font-medium">Número</th>
               <th class="px-4 py-3 font-medium">Tipo</th>
-              <th class="px-4 py-3 font-medium text-right">Monto</th>
-              <th class="px-4 py-3 font-medium text-right">Saldo</th>
+              <th class="px-4 py-3 font-medium">Monto</th>
+              <th class="px-4 py-3 font-medium">Saldo</th>
               <th class="px-4 py-3 font-medium">Estado</th>
-              <th class="px-4 py-3 font-medium text-right">Acciones</th>
+              <th class="px-4 py-3 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>

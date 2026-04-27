@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <h1 class="text-2xl font-bold text-gray-800">Cartera</h1>
       <button class="btn-secondary" @click="fetchCartera">Actualizar</button>
@@ -34,13 +34,13 @@
     <div class="card overflow-x-auto p-0">
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-left text-gray-500 border-b text-xs uppercase">
+          <tr class="text-center text-gray-500 border-b text-xs uppercase">
             <th class="px-4 py-3 font-medium">Cliente</th>
             <th class="px-4 py-3 font-medium">Venta</th>
-            <th class="px-4 py-3 font-medium text-right">Total venta</th>
-            <th class="px-4 py-3 font-medium text-right">Saldo pendiente</th>
+            <th class="px-4 py-3 font-medium">Total venta</th>
+            <th class="px-4 py-3 font-medium">Saldo pendiente</th>
             <th class="px-4 py-3 font-medium">Estado</th>
-            <th class="px-4 py-3 font-medium text-right">Acciones</th>
+            <th class="px-4 py-3 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>

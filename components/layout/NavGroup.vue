@@ -1,6 +1,6 @@
 <template>
-  <div class="mb-1">
-    <p class="px-4 py-1 text-xs font-semibold text-blue-400 uppercase tracking-widest">{{ label }}</p>
+  <div class="mb-4">
+    <p class="px-4 py-2 text-[11px] font-bold text-blue-300 uppercase tracking-wider opacity-80">{{ label }}</p>
     <slot />
   </div>
 </template>

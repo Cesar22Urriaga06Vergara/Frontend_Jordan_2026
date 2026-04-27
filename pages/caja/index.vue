@@ -1,8 +1,10 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <div class="flex items-center justify-between gap-3">
       <h1 class="text-2xl font-bold text-gray-800">Caja</h1>
-      <button class="btn-primary" @click="abrirModalEgreso">+ Registrar egreso</button>
+      <button class="btn-primary flex items-center gap-2" @click="abrirModalEgreso">
+        <Plus :size="16" /> Registrar egreso
+      </button>
     </div>
 
     <!-- Info -->
@@ -89,19 +91,28 @@
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wide">
+            <tr class="text-center text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wide">
               <th class="py-2 pr-3 font-medium">Hora</th>
+              <th class="py-2 pr-3 font-medium">Tipo</th>
               <th class="py-2 pr-3 font-medium">Concepto</th>
               <th class="py-2 pr-3 font-medium">Medio</th>
-              <th class="py-2 text-right font-medium">Monto</th>
+              <th class="py-2 font-medium">Monto</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="e in egresos" :key="e.id" class="border-b border-gray-50">
-              <td class="py-2 pr-3 text-gray-500">{{ formatDateTime(e.fecha) }}</td>
-              <td class="py-2 pr-3 text-gray-700">{{ e.concepto }}</td>
+              <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">{{ formatDateTime(e.fecha) }}</td>
+              <td class="py-2 pr-3">
+                <span class="px-2 py-0.5 rounded text-xs font-medium" :class="tipoEgresoClass(e.tipo)">
+                  {{ tipoEgresoLabel(e.tipo) }}
+                </span>
+              </td>
+              <td class="py-2 pr-3 text-gray-700">
+                {{ e.concepto }}
+                <span v-if="e.trabajador?.nombre" class="text-xs text-gray-400 block">{{ e.trabajador.nombre }}</span>
+              </td>
               <td class="py-2 pr-3 text-gray-500">{{ e.medioPago }}</td>
-              <td class="py-2 text-right text-red-600 font-semibold">{{ formatCurrency(e.monto) }}</td>
+              <td class="py-2 text-right text-red-600 font-semibold whitespace-nowrap">{{ formatCurrency(e.monto) }}</td>
             </tr>
           </tbody>
         </table>
@@ -116,12 +127,12 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <h2 class="font-bold text-gray-800">Registrar egreso</h2>
 
-        <FormField label="Concepto *">
+        <FormField label="Concepto *" :error="egresoErrors.concepto">
           <input v-model="egresoForm.concepto" class="form-input" placeholder="Ej: Compra de papelería" />
         </FormField>
 
         <div class="grid grid-cols-2 gap-3">
-          <FormField label="Monto *">
+          <FormField label="Monto *" :error="egresoErrors.monto">
             <input v-model.number="egresoForm.monto" class="form-input" type="number" min="0" />
           </FormField>
           <FormField label="Medio pago *">
@@ -158,6 +169,7 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDateTime, todayISO } from '~/utils/formats'
+import { Plus } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -184,6 +196,13 @@ const egresoForm = reactive({
   observaciones: '',
   fecha: todayISO(),
 })
+const egresoErrors = reactive({ concepto: '', monto: '' })
+
+function validarEgreso(): boolean {
+  egresoErrors.concepto = !egresoForm.concepto.trim() ? 'El concepto es requerido' : ''
+  egresoErrors.monto = Number(egresoForm.monto) <= 0 ? 'El monto debe ser mayor a 0' : ''
+  return !egresoErrors.concepto && !egresoErrors.monto
+}
 
 async function fetchEstado() {
   loadingEstado.value = true
@@ -216,6 +235,26 @@ async function fetchEgresos() {
   }
 }
 
+function tipoEgresoLabel(tipo: string): string {
+  const labels: Record<string, string> = {
+    PAGO_TRABAJADOR: 'Pago trabajador',
+    ANTICIPOS: 'Anticipo',
+    PRESTAMOS: 'Préstamo',
+    OTROS_EGRESOS: 'Otro egreso',
+  }
+  return labels[tipo] ?? tipo
+}
+
+function tipoEgresoClass(tipo: string): string {
+  const classes: Record<string, string> = {
+    PAGO_TRABAJADOR: 'bg-blue-100 text-blue-700',
+    ANTICIPOS: 'bg-orange-100 text-orange-700',
+    PRESTAMOS: 'bg-purple-100 text-purple-700',
+    OTROS_EGRESOS: 'bg-gray-100 text-gray-600',
+  }
+  return classes[tipo] ?? 'bg-gray-100 text-gray-600'
+}
+
 function abrirModalEgreso() {
   egresoForm.concepto = ''
   egresoForm.monto = 0
@@ -227,10 +266,7 @@ function abrirModalEgreso() {
 }
 
 async function registrarEgreso() {
-  if (!egresoForm.concepto.trim() || Number(egresoForm.monto) <= 0) {
-    notify.error('Concepto y monto son requeridos')
-    return
-  }
+  if (!validarEgreso()) return
 
   savingEgreso.value = true
   try {

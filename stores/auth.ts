@@ -80,7 +80,13 @@ export const useAuthStore = defineStore('auth', {
         }
         this.hydrated = true
         return true
-      } catch {
+      } catch (error: any) {
+        console.error('Error en hydrateUserFromApi:', {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data,
+          url: error?.response?.url,
+        })
         this.logout()
         this.hydrated = true
         return false

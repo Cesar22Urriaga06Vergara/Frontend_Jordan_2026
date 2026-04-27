@@ -1,17 +1,17 @@
 <template>
   <div
-    class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4"
+    class="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-md border border-gray-200 p-6 flex items-start gap-4 hover:shadow-lg transition-shadow"
     :class="{ 'opacity-60': loading }"
   >
     <div
-      class="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+      class="w-14 h-14 rounded-lg flex items-center justify-center text-3xl flex-shrink-0 shadow-sm"
       :class="bgClass"
     >
       {{ icon }}
     </div>
-    <div>
-      <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">{{ label }}</p>
-      <p class="text-xl font-bold text-gray-800 mt-0.5">
+    <div class="flex-1">
+      <p class="text-xs text-gray-500 font-bold uppercase tracking-widest">{{ label }}</p>
+      <p class="text-2xl font-black text-gray-900 mt-1">
         {{ loading ? '...' : value }}
       </p>
     </div>

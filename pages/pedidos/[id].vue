@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-3xl mx-auto space-y-6">
+  <div class="max-w-3xl mx-auto space-y-6">
     <!-- Back -->
     <NuxtLink to="/pedidos" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
       ← Volver a pedidos
@@ -17,7 +17,15 @@
           <h1 class="text-xl font-bold text-gray-800">{{ pedido.numeroPedido ?? pedido.numero ?? `Pedido #${pedido.id}` }}</h1>
           <p class="text-sm text-gray-500 mt-0.5">{{ pedido.cliente?.nombre ?? '—' }}</p>
         </div>
-        <EstadoBadge :estado="pedido.estado" />
+        <div class="flex items-center gap-3">
+          <button
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 text-sm font-medium transition-colors"
+            @click="imprimirPedido(pedido)"
+          >
+            <Printer :size="15" /> Imprimir ticket
+          </button>
+          <EstadoBadge :estado="pedido.estado" />
+        </div>
       </div>
 
       <!-- Info -->
@@ -61,6 +69,19 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Panel ir a rutas (solo cuando está PENDIENTE) -->
+      <div v-if="pedido.estado === 'PENDIENTE'" class="card border-l-4 border-blue-400 bg-blue-50">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p class="font-semibold text-blue-800 text-sm">Este pedido está pendiente de cargarse</p>
+            <p class="text-xs text-blue-600 mt-0.5">Para asignarlo a una ruta, hazlo desde la sección de Rutas. Ahí podrás ver todos los pedidos pendientes y cargarlos de una vez.</p>
+          </div>
+          <NuxtLink to="/rutas" class="btn-primary whitespace-nowrap flex items-center gap-1 justify-center">
+            → Ir a Rutas
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- Cambio de estado -->
@@ -109,11 +130,25 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Confirmación Cancelación -->
+    <ModalConfirmacion
+      ref="modalCancelConfirm"
+      titulo="¿Cancelar este pedido?"
+      descripcion="Una vez cancelado, el pedido no podrá ser entregado. Esta acción no puede deshacerse."
+      textoConfirm="Sí, cancelar"
+      textoCancel="Volver atrás"
+      :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
+      advertencia="Se requiere motivo de cancelación."
+      @confirm="procederCancelar"
+      @cancel="modalCancelConfirm?.close()"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatCurrency, formatDate } from '~/utils/formats'
+import { X, Printer } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -121,6 +156,7 @@ const route = useRoute()
 const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
+const { imprimirPedido } = usePrintTicket()
 
 const loading = ref(true)
 const pedido = ref<any>(null)
@@ -129,11 +165,11 @@ const modalEstado = ref(false)
 const estadoDestino = ref('')
 const estadoNotas = ref('')
 const motivoNoEntrega = ref('')
+const modalCancelConfirm = ref()
 
 const TRANSICIONES: Record<string, { valor: string; label: string; color?: string }[]> = {
   PENDIENTE: [
-    { valor: 'CARGADO_EN_RUTA', label: 'Cargar en ruta', color: 'bg-blue-600 hover:bg-blue-700' },
-    { valor: 'CANCELADO', label: 'Cancelar', color: 'bg-red-600 hover:bg-red-700' },
+    { valor: 'CANCELADO', label: 'Cancelar pedido', color: 'bg-red-600 hover:bg-red-700' },
   ],
   CARGADO_EN_RUTA: [
     { valor: 'ENTREGADO', label: 'Marcar entregado', color: 'bg-green-600 hover:bg-green-700' },
@@ -177,9 +213,24 @@ async function fetchPedido() {
 }
 
 function abrirModalEstado(estado: string) {
-  estadoDestino.value = estado
-  estadoNotas.value = ''
-  motivoNoEntrega.value = ''
+  if (estado === 'CANCELADO') {
+    // Si es cancelar, primero abre modal de confirmación
+    modalCancelConfirm.value?.open()
+    estadoDestino.value = estado
+    estadoNotas.value = ''
+    motivoNoEntrega.value = ''
+  } else {
+    // Otros cambios de estado van directo
+    estadoDestino.value = estado
+    estadoNotas.value = ''
+    motivoNoEntrega.value = ''
+    modalEstado.value = true
+  }
+}
+
+function procederCancelar() {
+  // Una vez confirmado en modal de confirmación, abre el modal de estado
+  modalCancelConfirm.value?.close()
   modalEstado.value = true
 }
 

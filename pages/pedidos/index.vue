@@ -1,45 +1,85 @@
 <template>
-  <div>
-    <div class="flex flex-wrap gap-3 mb-5">
-      <select v-model="filters.estado" class="form-input w-44" @change="loadPedidos">
-        <option value="">Todos los estados</option>
-        <option v-for="e in estados" :key="e.value" :value="e.value">{{ e.label }}</option>
-      </select>
-      <input v-model="filters.fechaDesde" type="date" class="form-input w-40" @change="loadPedidos" />
-      <input v-model="filters.fechaHasta" type="date" class="form-input w-40" @change="loadPedidos" />
-      <button class="ml-auto btn-primary" @click="openModal">+ Nuevo pedido</button>
+  <div class="space-y-5">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Pedidos</h1>
+        <p class="text-sm text-gray-600 mt-1">Gestión y seguimiento de pedidos</p>
+      </div>
+      <button class="btn-primary flex items-center gap-2 justify-center sm:justify-start" @click="openModal">
+        <Plus :size="16" /> Nuevo pedido
+      </button>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+    <!-- Filtros Mejorados -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-3">
+      <div class="flex gap-3 flex-wrap items-end">
+        <div class="flex-1 min-w-40">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Estado</label>
+          <select v-model="filters.estado" class="form-input w-full" @change="loadPedidos">
+            <option value="">Todos los estados</option>
+            <option v-for="e in estados" :key="e.value" :value="e.value">{{ e.label }}</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-36">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Desde</label>
+          <input v-model="filters.fechaDesde" type="date" class="form-input w-full" @change="loadPedidos" />
+        </div>
+        <div class="flex-1 min-w-36">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Hasta</label>
+          <input v-model="filters.fechaHasta" type="date" class="form-input w-full" @change="loadPedidos" />
+        </div>
+      </div>
+      <div class="text-xs text-gray-500 flex items-center justify-between">
+        <span>
+          {{ pedidos.length > 0 ? `Mostrando ${pedidos.length} pedido(s)` : 'Sin resultados' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 text-xs uppercase text-gray-600 font-semibold">
-          <tr>
-            <th class="px-4 py-3 text-left">Número</th>
-            <th class="px-4 py-3 text-left">Cliente</th>
-            <th class="px-4 py-3 text-left">Fecha</th>
-            <th class="px-4 py-3 text-left">Estado</th>
-            <th class="px-4 py-3 text-right">Items</th>
-            <th class="px-4 py-3 text-center">Acción</th>
+        <thead class="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-300">
+          <tr class="text-center text-gray-700 text-xs uppercase tracking-wide">
+            <th class="px-4 py-4 font-bold">Número</th>
+            <th class="px-4 py-4 font-bold">Cliente</th>
+            <th class="px-4 py-4 font-bold">Fecha</th>
+            <th class="px-4 py-4 font-bold">Estado</th>
+            <th class="px-4 py-4 font-bold">Items</th>
+            <th class="px-4 py-4 font-bold">Acción</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="loading"><td colspan="7" class="py-8 text-center text-gray-400">Cargando...</td></tr>
-          <tr v-else-if="!pedidos.length"><td colspan="7" class="py-8 text-center text-gray-400">Sin resultados</td></tr>
-          <tr v-for="p in pedidos" :key="p.id" class="border-t border-gray-100 hover:bg-gray-50">
-            <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ p.numero }}</td>
-            <td class="px-4 py-3 font-medium text-gray-800">{{ p.cliente?.nombre }}</td>
-            <td class="px-4 py-3 text-gray-600">{{ formatDate(p.fecha) }}</td>
-            <td class="px-4 py-3"><EstadoBadge :estado="p.estado" /></td>
-            <td class="px-4 py-3 text-right text-gray-600">{{ p.detalles?.length ?? 0 }}</td>
-            <td class="px-4 py-3 text-center">
-              <div class="flex gap-2 justify-center">
-                <button class="text-blue-600 hover:underline text-xs" @click="verDetalle(p)">Ver</button>
+          <tr v-if="loading">
+            <td colspan="6" class="py-8 text-center text-gray-400">Cargando...</td>
+          </tr>
+          <tr v-else-if="!pedidos.length">
+            <td colspan="6" class="py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo pedido.</td>
+          </tr>
+          <tr v-for="p in pedidos" :key="p.id" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+            <td class="px-4 py-4 font-mono text-xs text-gray-500">{{ p.numero }}</td>
+            <td class="px-4 py-4 font-semibold text-gray-900">{{ p.cliente?.nombre }}</td>
+            <td class="px-4 py-4 text-gray-700">{{ formatDate(p.fecha) }}</td>
+            <td class="px-4 py-4"><EstadoBadge :estado="p.estado" /></td>
+            <td class="px-4 py-4 text-right text-gray-700 font-medium">{{ p.detalles?.length ?? 0 }}</td>
+            <td class="px-4 py-4 text-center">
+              <div class="flex gap-2 justify-center flex-wrap">
+                <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded text-xs font-medium transition-colors" @click="verDetalle(p)">Ver</button>
                 <button 
                   v-if="p.estado === 'PENDIENTE'"
-                  class="text-amber-600 hover:underline text-xs" 
+                  class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded text-xs font-medium transition-colors" 
                   @click="abrirModalEditar(p)"
                 >
                   Editar
+                </button>
+                <button
+                  class="flex items-center gap-1 text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40"
+                  :disabled="printingId === p.id"
+                  @click="imprimir(p)"
+                >
+                  <Printer :size="12" />
+                  {{ printingId === p.id ? '...' : 'Imprimir' }}
                 </button>
               </div>
             </td>
@@ -59,7 +99,7 @@
 
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
           <h3 class="font-semibold text-gray-800 mb-4">{{ editandoPedidoId ? 'Editar pedido' : 'Nuevo pedido' }}</h3>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -120,12 +160,16 @@
 
 <script setup lang="ts">
 import { formatDate, todayISO } from '~/utils/formats'
+import { Plus, Printer } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
 const api = useApi()
 const { error, success } = useNotification()
 const apiResponse = useApiResponse()
+const { imprimirPedido } = usePrintTicket()
+
+const printingId = ref<number | null>(null)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -270,6 +314,19 @@ async function actualizarPedido() {
     error(e?.response?.data?.message || 'Error al actualizar pedido')
   } finally {
     saving.value = false
+  }
+}
+
+async function imprimir(p: any) {
+  printingId.value = p.id
+  try {
+    const res = await api.get(`/operaciones/pedidos/${p.id}`)
+    const pedidoCompleto = apiResponse.unwrap(res)
+    imprimirPedido(pedidoCompleto)
+  } catch {
+    error('No se pudo cargar el pedido para imprimir')
+  } finally {
+    printingId.value = null
   }
 }
 

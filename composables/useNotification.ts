@@ -4,9 +4,9 @@ interface Notification {
   message: string
 }
 
-const notifications = useState<Notification[]>('notifications', () => [])
-
 export const useNotification = () => {
+  const notifications = useState<Notification[]>('notifications', () => [])
+
   const show = (
     type: Notification['type'],
     message: string,

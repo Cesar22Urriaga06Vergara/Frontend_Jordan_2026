@@ -1,13 +1,15 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <h1 class="text-2xl font-bold text-gray-800">Rutas</h1>
-      <button class="btn-primary" @click="abrirModal()">+ Nueva ruta</button>
+      <button class="btn-primary flex items-center gap-2" @click="abrirModal()">
+        <Plus :size="16" /> Nueva ruta
+      </button>
     </div>
 
     <!-- Filtros -->
     <div class="card flex flex-wrap gap-3">
-      <select v-model="filtroEstado" class="form-input w-40" @change="pagina = 1; fetchRutas()">
+      <select v-model="filtroEstado" class="form-input flex-1 min-w-36 sm:flex-none sm:w-40" @change="pagina = 1; fetchRutas()">
         <option value="">Todos los estados</option>
         <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
       </select>
@@ -17,13 +19,13 @@
     <div class="card overflow-x-auto p-0">
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-left text-gray-500 border-b border-gray-100 text-xs uppercase">
+          <tr class="text-center text-gray-500 border-b border-gray-100 text-xs uppercase">
             <th class="px-4 py-3 font-medium">Número</th>
             <th class="px-4 py-3 font-medium">Fecha</th>
             <th class="px-4 py-3 font-medium">Trabajador</th>
-            <th class="px-4 py-3 font-medium text-center">Pedidos</th>
+            <th class="px-4 py-3 font-medium">Pedidos</th>
             <th class="px-4 py-3 font-medium">Estado</th>
-            <th class="px-4 py-3 font-medium text-right">Acciones</th>
+            <th class="px-4 py-3 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +47,9 @@
             <td class="px-4 py-3"><EstadoBadge :estado="r.estado" /></td>
             <td class="px-4 py-3 text-right">
               <div class="flex justify-end gap-2">
-                <button class="text-xs text-blue-600 hover:underline" @click="abrirDetalle(r)">Gestionar</button>
+                <button class="flex items-center gap-1 text-xs text-blue-600 hover:underline" @click="abrirDetalle(r)">
+                  <ArrowRight :size="14" /> Gestionar
+                </button>
               </div>
             </td>
           </tr>
@@ -72,10 +76,10 @@
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <h2 class="font-bold text-gray-800">Nueva ruta</h2>
 
-        <FormField label="Fecha *">
+        <FormField label="Fecha *" :error="errors.fecha">
           <input v-model="form.fecha" type="date" class="form-input" />
         </FormField>
-        <FormField label="Trabajador *">
+        <FormField label="Trabajador *" :error="errors.domiciliarioId">
           <select v-model="form.domiciliarioId" class="form-input">
             <option :value="undefined">Seleccionar…</option>
             <option v-for="t in trabajadores" :key="t.id" :value="t.id">{{ t.nombre }}</option>
@@ -129,22 +133,40 @@
           </ul>
         </div>
 
-        <!-- Agregar pedido -->
+        <!-- Agregar pedidos -->
         <div v-if="['CREADA', 'CARGADA'].includes(rutaActiva.estado)" class="border-t pt-4">
-          <h3 class="text-sm font-semibold text-gray-600 mb-2">Agregar pedido</h3>
-          <div class="flex gap-2">
-            <select v-model="pedidoIdAgregar" class="form-input flex-1">
-              <option :value="undefined">Seleccionar pedido pendiente…</option>
-              <option v-for="p in pedidosPendientes" :key="p.id" :value="p.id">
-                {{ p.numero }} · {{ p.cliente?.nombre ?? 'Cliente' }}
-              </option>
-            </select>
-            <button class="btn-primary whitespace-nowrap" :disabled="!pedidoIdAgregar" @click="agregarPedido">
-              Agregar
-            </button>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-gray-600">Agregar pedidos pendientes</h3>
+            <span v-if="pedidosSeleccionados.length" class="text-xs text-blue-600">{{ pedidosSeleccionados.length }} seleccionado(s)</span>
           </div>
-          <p v-if="loadingPendientes" class="text-xs text-gray-400 mt-2">Cargando pedidos pendientes…</p>
-          <p v-else-if="!pedidosPendientes.length" class="text-xs text-gray-400 mt-2">No hay pedidos pendientes disponibles.</p>
+
+          <div v-if="loadingPendientes" class="text-xs text-gray-400 py-2">Cargando pedidos pendientes…</div>
+          <div v-else-if="!pedidosPendientes.length" class="text-xs text-gray-400 py-2">No hay pedidos pendientes disponibles.</div>
+          <div v-else class="space-y-1 max-h-48 overflow-y-auto border rounded-lg p-2 bg-gray-50">
+            <label
+              v-for="p in pedidosPendientes"
+              :key="p.id"
+              class="flex items-center gap-3 p-2 rounded hover:bg-white cursor-pointer text-sm"
+              :class="pedidosSeleccionados.includes(p.id) ? 'bg-white ring-1 ring-blue-300' : ''"
+            >
+              <input
+                type="checkbox"
+                :value="p.id"
+                v-model="pedidosSeleccionados"
+                class="accent-blue-600"
+              />
+              <span class="font-medium text-gray-700">{{ p.numero ?? p.numeroPedido }}</span>
+              <span class="text-gray-500 text-xs">{{ p.cliente?.nombre ?? '' }}</span>
+            </label>
+          </div>
+
+          <button
+            class="btn-primary mt-3 w-full"
+            :disabled="!pedidosSeleccionados.length || agregandoPedidos"
+            @click="agregarPedidosSeleccionados"
+          >
+            {{ agregandoPedidos ? 'Agregando…' : `Agregar ${pedidosSeleccionados.length || ''} pedido${pedidosSeleccionados.length !== 1 ? 's' : ''}` }}
+          </button>
         </div>
 
         <!-- Transiciones de estado -->
@@ -293,11 +315,25 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Confirmación Anulación -->
+    <ModalConfirmacion
+      ref="modalAnulaConfirm"
+      titulo="¿Anular esta ruta?"
+      descripcion="Una vez anulada, la ruta no podrá ser liquidada. Los pedidos volverán a estado PENDIENTE."
+      textoConfirm="Sí, anular"
+      textoCancel="Volver atrás"
+      :detalles="{ Ruta: rutaActiva?.numero, Trabajador: rutaActiva?.domiciliario?.nombre }"
+      advertencia="Esta acción no se puede deshacer."
+      @confirm="procederAnular"
+      @cancel="modalAnulaConfirm?.close()"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatDate, todayISO } from '~/utils/formats'
+import { AlertTriangle, Plus, ArrowRight } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -318,11 +354,21 @@ const filtroEstado = ref('')
 
 const modalForm = ref(false)
 const form = reactive({ fecha: todayISO(), domiciliarioId: undefined as number | undefined, observaciones: '' })
+const errors = reactive({ fecha: '', domiciliarioId: '' })
 const trabajadores = ref<any[]>([])
+
+function validarForm(): boolean {
+  errors.fecha = !form.fecha ? 'La fecha es requerida' : ''
+  errors.domiciliarioId = !form.domiciliarioId ? 'Debes seleccionar un trabajador' : ''
+  return !errors.fecha && !errors.domiciliarioId
+}
 
 const modalDetalle = ref(false)
 const rutaActiva = ref<any>(null)
+const modalAnulaConfirm = ref()
 const pedidoIdAgregar = ref<number | undefined>(undefined)
+const pedidosSeleccionados = ref<number[]>([])
+const agregandoPedidos = ref(false)
 const pedidosPendientes = ref<any[]>([])
 const loadingPendientes = ref(false)
 
@@ -512,7 +558,8 @@ function abrirModal() {
 }
 
 async function crearRuta() {
-  if (!form.domiciliarioId) { notify.error('Selecciona un trabajador'); return }
+  if (!validarForm()) return
+  
   saving.value = true
   try {
     await api.post('/operaciones/rutas', form)
@@ -535,6 +582,7 @@ async function abrirDetalle(ruta: any) {
     notify.error('No se pudo cargar el detalle completo de la ruta')
   }
   pedidoIdAgregar.value = undefined
+  pedidosSeleccionados.value = []
   await fetchPedidosPendientes()
   modalDetalle.value = true
 }
@@ -543,6 +591,7 @@ function cerrarDetalle() {
   modalDetalle.value = false
   rutaActiva.value = null
   pedidosPendientes.value = []
+  pedidosSeleccionados.value = []
   fetchRutas()
 }
 
@@ -563,6 +612,30 @@ async function fetchPedidosPendientes() {
     notify.error('No se pudieron cargar los pedidos pendientes')
   } finally {
     loadingPendientes.value = false
+  }
+}
+
+async function agregarPedidosSeleccionados() {
+  if (!pedidosSeleccionados.value.length) return
+  agregandoPedidos.value = true
+  try {
+    let orden = (rutaActiva.value.itemsRuta?.length ?? 0) + 1
+    for (const pedidoId of pedidosSeleccionados.value) {
+      await api.post(`/operaciones/rutas/${rutaActiva.value.id}/pedidos`, {
+        pedidoId,
+        ordenEntrega: orden++,
+      })
+    }
+    notify.success(`${pedidosSeleccionados.value.length} pedido(s) agregado(s)`)
+    pedidosSeleccionados.value = []
+    pedidoIdAgregar.value = undefined
+    const res = await api.get(`/operaciones/rutas/${rutaActiva.value.id}`)
+    rutaActiva.value = apiResponse.unwrap(res)
+    await fetchPedidosPendientes()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'Error al agregar pedidos')
+  } finally {
+    agregandoPedidos.value = false
   }
 }
 
@@ -596,7 +669,22 @@ async function quitarPedido(pedidoId: number) {
   }
 }
 
-async function cambiarEstadoRuta(estadoNuevo: string) {
+function cambiarEstadoRuta(estadoNuevo: string) {
+  if (estadoNuevo === 'ANULADA') {
+    // Si es anular, primero abre modal de confirmación
+    modalAnulaConfirm.value?.open()
+  } else {
+    // Otros cambios van directo
+    procederCambioEstado(estadoNuevo)
+  }
+}
+
+async function procederAnular() {
+  modalAnulaConfirm.value?.close()
+  await procederCambioEstado('ANULADA')
+}
+
+async function procederCambioEstado(estadoNuevo: string) {
   try {
     await api.patch(`/operaciones/rutas/${rutaActiva.value.id}/estado`, { estado: estadoNuevo })
     notify.success('Estado actualizado')

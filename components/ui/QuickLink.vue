@@ -1,10 +1,10 @@
 <template>
   <NuxtLink
     :to="to"
-    class="flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors text-center"
+    class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition-all duration-150 text-center group"
   >
-    <span class="text-2xl">{{ icon }}</span>
-    <span class="text-xs font-medium text-gray-700">{{ label }}</span>
+    <span class="text-3xl group-hover:scale-110 transition-transform">{{ icon }}</span>
+    <span class="text-xs font-semibold text-gray-700 group-hover:text-blue-700 transition-colors">{{ label }}</span>
   </NuxtLink>
 </template>
 

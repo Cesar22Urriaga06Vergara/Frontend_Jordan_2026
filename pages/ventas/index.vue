@@ -1,34 +1,36 @@
 <template>
-  <div class="p-6 space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <h1 class="text-2xl font-bold text-gray-800">Ventas</h1>
-      <button class="btn-primary" @click="abrirNuevaVenta">+ Nueva venta</button>
+      <button class="btn-primary flex items-center gap-2" @click="abrirNuevaVenta">
+        <Plus :size="16" /> Nueva venta
+      </button>
     </div>
 
     <!-- Filtros -->
     <div class="card flex flex-wrap gap-3">
-      <select v-model="filtroEstado" class="form-input w-40" @change="pagina = 1; fetchVentas()">
+      <select v-model="filtroEstado" class="form-input flex-1 min-w-36" @change="pagina = 1; fetchVentas()">
         <option value="">Todos los estados</option>
         <option value="COMPLETADA">Completada</option>
         <option value="PARCIAL">Parcial</option>
         <option value="PENDIENTE">Pendiente</option>
       </select>
-      <input v-model="filtroFechaDesde" type="date" class="form-input w-40" @change="pagina = 1; fetchVentas()" />
-      <input v-model="filtroFechaHasta" type="date" class="form-input w-40" @change="pagina = 1; fetchVentas()" />
+      <input v-model="filtroFechaDesde" type="date" class="form-input flex-1 min-w-36" @change="pagina = 1; fetchVentas()" />
+      <input v-model="filtroFechaHasta" type="date" class="form-input flex-1 min-w-36" @change="pagina = 1; fetchVentas()" />
     </div>
 
     <!-- Tabla -->
     <div class="card overflow-x-auto p-0">
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-left text-gray-500 border-b text-xs uppercase">
+          <tr class="text-center text-gray-500 border-b text-xs uppercase">
             <th class="px-4 py-3 font-medium">Número</th>
             <th class="px-4 py-3 font-medium">Fecha</th>
             <th class="px-4 py-3 font-medium">Cliente</th>
-            <th class="px-4 py-3 font-medium text-right">Total</th>
-            <th class="px-4 py-3 font-medium text-right">Saldo</th>
+            <th class="px-4 py-3 font-medium">Total</th>
+            <th class="px-4 py-3 font-medium">Saldo</th>
             <th class="px-4 py-3 font-medium">Estado</th>
-            <th class="px-4 py-3 font-medium text-right">Acciones</th>
+            <th class="px-4 py-3 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -86,13 +88,13 @@
         <h2 class="font-bold text-gray-800">Nueva venta</h2>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Cliente *">
+          <FormField label="Cliente *" :error="nvErrors.clienteId">
             <select v-model="nvForm.clienteId" class="form-input" @change="onClienteChange">
               <option :value="undefined">Seleccionar…</option>
               <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nombre }}</option>
             </select>
           </FormField>
-          <FormField label="Fecha venta *">
+          <FormField label="Fecha venta *" :error="nvErrors.fechaVenta">
             <input v-model="nvForm.fechaVenta" type="date" class="form-input" />
           </FormField>
           <FormField label="Monto pagado ($)">
@@ -129,6 +131,7 @@
             <input v-model.number="d.precioUnitario" class="form-input w-28" type="number" min="0" placeholder="Precio" />
             <button class="text-red-400 hover:text-red-600 mt-2 text-lg leading-none" @click="nvForm.detalles.splice(i, 1)">×</button>
           </div>
+          <p v-if="nvErrors.detalles" class="text-xs text-red-600 mt-1">{{ nvErrors.detalles }}</p>
 
           <div class="text-right font-semibold text-gray-800 mt-2">
             Total: {{ formatCurrency(totalNueva) }}
@@ -231,6 +234,7 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
+import { Plus } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -262,6 +266,15 @@ const nvForm = reactive({
   notas: '',
   detalles: [] as { productoId: number | undefined; cantidad: number; precioUnitario: number }[],
 })
+const nvErrors = reactive({ clienteId: '', fechaVenta: '', detalles: '' })
+
+function validarNuevaVenta(): boolean {
+  nvErrors.clienteId = !nvForm.clienteId ? 'Debes seleccionar un cliente' : ''
+  nvErrors.fechaVenta = !nvForm.fechaVenta ? 'La fecha es requerida' : ''
+  const detallesValidos = nvForm.detalles.filter(d => d.productoId && d.cantidad > 0 && d.precioUnitario > 0)
+  nvErrors.detalles = !detallesValidos.length ? 'Agrega al menos un producto válido' : ''
+  return !nvErrors.clienteId && !nvErrors.fechaVenta && !nvErrors.detalles
+}
 
 const totalNueva = computed(() =>
   nvForm.detalles.reduce((s, d) => s + (d.cantidad ?? 0) * (d.precioUnitario ?? 0), 0)
@@ -340,8 +353,7 @@ function onClienteChange() {
 }
 
 async function crearVenta() {
-  const detallesValidos = nvForm.detalles.filter(d => d.productoId && d.cantidad > 0 && d.precioUnitario > 0)
-  if (!detallesValidos.length) { notify.error('Agrega al menos un producto'); return }
+  if (!validarNuevaVenta()) return
   if (nvForm.montoPagado < 0) { notify.error('El monto pagado no puede ser negativo'); return }
   if (nvForm.montoPagado > totalNueva.value) {
     notify.error('El monto pagado inicial no puede superar el total de la venta')
@@ -349,6 +361,7 @@ async function crearVenta() {
   }
   saving.value = true
   try {
+    const detallesValidos = nvForm.detalles.filter(d => d.productoId && d.cantidad > 0 && d.precioUnitario > 0)
     const payload: Record<string, any> = {
       clienteId: nvForm.clienteId,
       fecha: nvForm.fechaVenta,

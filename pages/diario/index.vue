@@ -1,6 +1,36 @@
 <template>
-  <div class="p-6 space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">Flujo diario — {{ hoy }}</h1>
+  <div class="space-y-6">
+    <!-- Header con selector de fecha -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <h1 class="text-2xl font-bold text-gray-800">Flujo diario</h1>
+      <div class="flex items-center gap-2">
+        <label class="text-sm text-gray-600 whitespace-nowrap">Fecha:</label>
+        <input
+          v-model="fechaSeleccionada"
+          type="date"
+          class="form-input w-auto"
+          :max="hoy"
+          @change="onFechaChange"
+        />
+        <button
+          v-if="fechaSeleccionada !== hoy"
+          class="text-xs text-blue-600 hover:underline whitespace-nowrap"
+          @click="fechaSeleccionada = hoy; onFechaChange()"
+        >Hoy</button>
+      </div>
+    </div>
+
+    <!-- Alerta día anterior sin cerrar -->
+    <div v-if="diaPendiente && fechaSeleccionada === hoy" class="bg-red-50 border border-red-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-red-700">⚠️ Hay un día sin cerrar: {{ diaPendiente }}</p>
+        <p class="text-xs text-red-500 mt-0.5">Debes cerrarlo antes de poder abrir el día de hoy.</p>
+      </div>
+      <button
+        class="btn-danger whitespace-nowrap text-sm"
+        @click="irACerrarDiaPendiente"
+      >Ir a cerrar {{ diaPendiente }}</button>
+    </div>
 
     <div v-if="loadingEstado" class="card text-center text-gray-400 py-8">Cargando estado…</div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -12,7 +42,7 @@
 
     <div class="card space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-gray-700">Apertura del día</h2>
+        <h2 class="font-semibold text-gray-700">Apertura del día — {{ fechaSeleccionada }}</h2>
         <span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="estado.abierto ? 'bg-green-100 text-green-700' : (estado.apertura ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700')">
           {{ estado.abierto ? 'Jornada abierta' : (estado.apertura ? 'Jornada cerrada' : 'Sin abrir') }}
         </span>
@@ -170,10 +200,12 @@ const notify = useNotification()
 const apiResponse = useApiResponse()
 
 const hoy = todayISO()
+const fechaSeleccionada = ref(hoy)
 const loadingEstado = ref(true)
 const savingApertura = ref(false)
 const savingProduccion = ref(false)
 const savingCierre = ref(false)
+const diaPendiente = ref<string | null>(null)
 
 const estado = ref<any>({ apertura: null, cierre: null, pedidosPendientes: 0, rutasAbiertas: 0 })
 const reopening = ref(false)
@@ -200,14 +232,34 @@ function syncCierreInventario() {
   })
 }
 
+function onFechaChange() {
+  reopening.value = false
+  fetchEstado()
+}
+
+function irACerrarDiaPendiente() {
+  if (diaPendiente.value) {
+    fechaSeleccionada.value = diaPendiente.value
+    onFechaChange()
+  }
+}
+
 async function fetchEstado() {
   loadingEstado.value = true
+  diaPendiente.value = null
   try {
-    const res = await api.get('/diario/estado')
+    const res = await api.get('/diario/estado', { params: { fecha: fechaSeleccionada.value } })
     estado.value = apiResponse.unwrap(res)
     syncCierreInventario()
-  } catch {
-    notify.error('Error al cargar estado del día')
+  } catch (e: any) {
+    // Detectar 409: día anterior sin cerrar
+    const msg: string = e?.response?.data?.message ?? e?.message ?? ''
+    const match = msg.match(/(\d{4}-\d{2}-\d{2})/)
+    if (e?.response?.status === 409 && match) {
+      diaPendiente.value = match[1]
+    } else {
+      notify.error('Error al cargar estado del día')
+    }
   } finally {
     loadingEstado.value = false
   }
@@ -245,13 +297,13 @@ async function abrirDia() {
   savingApertura.value = true
   try {
     await api.post('/diario/apertura', {
-      fecha: hoy,
+      fecha: fechaSeleccionada.value,
       saldoInicial: aperturaSaldoInicial.value,
       inventario: aperturaInventario.value.filter(i => i.productoId).map(i => ({
         productoId: i.productoId,
         cantidadInicial: i.cantidadInicial,
       })),
-      observaciones: `Apertura manual ${hoy}`,
+      observaciones: `Apertura manual ${fechaSeleccionada.value}`,
     })
     notify.success('Día abierto')
     reopening.value = false
@@ -259,7 +311,14 @@ async function abrirDia() {
     aperturaSaldoInicial.value = 0
     await fetchEstado()
   } catch (e: any) {
-    notify.error(e?.response?.data?.message ?? 'Error al abrir día')
+    const msg: string = e?.response?.data?.message ?? e?.message ?? ''
+    const match = msg.match(/(\d{4}-\d{2}-\d{2})/)
+    if (e?.response?.status === 409 && match) {
+      diaPendiente.value = match[1]
+      notify.error(msg)
+    } else {
+      notify.error(msg || 'Error al abrir día')
+    }
   } finally {
     savingApertura.value = false
   }
@@ -294,8 +353,9 @@ async function cerrarDia() {
         productoId: item.productoId,
         cantidadContada: item.cantidadContada,
       })),
-    })
+    }, { params: { fecha: fechaSeleccionada.value } })
     notify.success('Día cerrado correctamente')
+    diaPendiente.value = null
     await Promise.all([fetchEstado(), fetchHistorial()])
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al cerrar día')
