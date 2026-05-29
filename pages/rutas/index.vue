@@ -245,7 +245,7 @@ function abrirModal() {
 }
 
 function puedeEliminarRuta(r: any) {
-  return ['CREADA', 'CARGADA'].includes(r?.estado)
+  return ['CREADA', 'CARGADA', 'ANULADA'].includes(r?.estado)
 }
 
 function confirmarEliminarRuta(r: any) {

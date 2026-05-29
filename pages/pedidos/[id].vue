@@ -224,7 +224,7 @@ const totalPedido = computed(() => {
 
 const puedeEliminarPedido = computed(() => {
   const tieneVentas = Array.isArray(pedido.value?.ventas) && pedido.value.ventas.length > 0
-  return ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(pedido.value?.estado) && !tieneVentas
+  return ['PENDIENTE', 'CARGADO_EN_RUTA', 'CANCELADO'].includes(pedido.value?.estado) && !tieneVentas
 })
 
 async function fetchPedido() {

@@ -191,7 +191,7 @@ function verDetalle(p: any) {
 
 function puedeEliminarPedido(p: any) {
   const tieneVentas = Array.isArray(p?.ventas) && p.ventas.length > 0
-  return ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(p?.estado) && !tieneVentas
+  return ['PENDIENTE', 'CARGADO_EN_RUTA', 'CANCELADO'].includes(p?.estado) && !tieneVentas
 }
 
 function confirmarEliminarPedido(p: any) {

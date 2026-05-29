@@ -249,7 +249,7 @@ const puedeEditarPedidos = computed(() =>
 )
 
 const puedeEliminarRuta = computed(() =>
-  ['CREADA', 'CARGADA'].includes(ruta.value?.estado ?? ''),
+  ['CREADA', 'CARGADA', 'ANULADA'].includes(ruta.value?.estado ?? ''),
 )
 
 const acciones = computed(() => {
