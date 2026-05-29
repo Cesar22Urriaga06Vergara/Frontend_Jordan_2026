@@ -1,14 +1,47 @@
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <h1 class="text-2xl font-bold text-gray-800">Ventas</h1>
-      <button class="btn-primary flex items-center gap-2" @click="abrirNuevaVenta">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Ventas</h1>
+        <p class="text-sm text-gray-500">Ventas directas, pagos y saldos pendientes.</p>
+      </div>
+      <button class="btn-primary inline-flex items-center justify-center gap-2" @click="abrirNuevaVenta">
         <Plus :size="16" /> Nueva venta
       </button>
     </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <ReceiptText class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Ventas listadas</p>
+          <p class="text-2xl font-bold text-gray-800">{{ total }}</p>
+        </div>
+      </div>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
+          <WalletCards class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Total vendido</p>
+          <p class="text-2xl font-bold text-gray-800">{{ formatCurrency(totalVendidoListado) }}</p>
+        </div>
+      </div>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-orange-50 text-orange-700 flex items-center justify-center">
+          <CreditCard class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Saldo pendiente</p>
+          <p class="text-2xl font-bold text-gray-800">{{ formatCurrency(totalSaldoListado) }}</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Filtros -->
-    <div class="card flex flex-wrap gap-3">
+    <div class="card flex flex-wrap gap-3 items-end">
       <select v-model="filtroEstado" class="form-input flex-1 min-w-36" @change="pagina = 1; fetchVentas()">
         <option value="">Todos los estados</option>
         <option value="COMPLETADA">Completada</option>
@@ -17,6 +50,10 @@
       </select>
       <input v-model="filtroFechaDesde" type="date" class="form-input flex-1 min-w-36" @change="pagina = 1; fetchVentas()" />
       <input v-model="filtroFechaHasta" type="date" class="form-input flex-1 min-w-36" @change="pagina = 1; fetchVentas()" />
+      <button class="btn-secondary inline-flex items-center gap-2" @click="fetchVentas">
+        <RefreshCw class="h-4 w-4" />
+        Actualizar
+      </button>
     </div>
 
     <!-- Tabla -->
@@ -57,10 +94,16 @@
               <div class="flex justify-end gap-2">
                 <button
                   v-if="v.saldoPendiente > 0"
-                  class="text-xs text-blue-600 hover:underline"
+                  class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1"
                   @click="abrirPago(v)"
-                >Registrar pago</button>
-                <button class="text-xs text-gray-500 hover:underline" @click="verDetalle(v)">Ver</button>
+                >
+                  <CreditCard class="h-3.5 w-3.5" />
+                  Registrar pago
+                </button>
+                <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="verDetalle(v)">
+                  <Eye class="h-3.5 w-3.5" />
+                  Ver
+                </button>
               </div>
             </td>
           </tr>
@@ -84,8 +127,11 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalNueva = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <h2 class="font-bold text-gray-800">Nueva venta</h2>
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div>
+          <h2 class="font-bold text-gray-800">Nueva venta</h2>
+          <p class="text-sm text-gray-500 mt-1">Selecciona cliente, productos y pago inicial si aplica.</p>
+        </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Cliente *" :error="nvErrors.clienteId">
@@ -115,7 +161,10 @@
         <div class="border-t pt-4">
           <div class="flex items-center justify-between mb-2">
             <h3 class="font-semibold text-sm text-gray-700">Productos</h3>
-            <button class="text-xs text-blue-600 hover:underline" @click="agregarDetalle">+ Añadir línea</button>
+            <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="agregarDetalle">
+              <Plus class="h-4 w-4" />
+              Añadir línea
+            </button>
           </div>
 
           <div
@@ -140,7 +189,8 @@
 
         <div class="flex justify-end gap-2 pt-2">
           <button class="btn-secondary" @click="modalNueva = false">Cancelar</button>
-          <button class="btn-primary" :disabled="saving || !nvForm.clienteId || !nvForm.detalles.length" @click="crearVenta">
+          <button class="btn-primary inline-flex items-center gap-2" :disabled="saving || !nvForm.clienteId || !nvForm.detalles.length" @click="crearVenta">
+            <ReceiptText class="h-4 w-4" />
             {{ saving ? 'Guardando…' : 'Crear venta' }}
           </button>
         </div>
@@ -153,11 +203,13 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalPago = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <h2 class="font-bold text-gray-800">Registrar pago</h2>
-        <p class="text-sm text-gray-500">
-          Venta: {{ ventaPago?.numero }} — Saldo pendiente: {{ formatCurrency(ventaPago?.saldoPendiente) }}
-        </p>
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div>
+          <h2 class="font-bold text-gray-800">Registrar pago</h2>
+          <p class="text-sm text-gray-500 mt-1">
+            Venta: {{ ventaPago?.numero }} — Saldo pendiente: {{ formatCurrency(ventaPago?.saldoPendiente) }}
+          </p>
+        </div>
 
         <FormField label="Monto *">
           <input v-model.number="pagoForm.monto" class="form-input" type="number" min="0" />
@@ -190,7 +242,7 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalDetalle = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between">
           <h2 class="font-bold text-gray-800">{{ ventaDetalle.numero }}</h2>
           <EstadoBadge :estado="ventaDetalle.estado" />
@@ -234,7 +286,7 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
-import { Plus } from 'lucide-vue-next'
+import { CreditCard, Eye, Plus, ReceiptText, RefreshCw, WalletCards } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -278,6 +330,13 @@ function validarNuevaVenta(): boolean {
 
 const totalNueva = computed(() =>
   nvForm.detalles.reduce((s, d) => s + (d.cantidad ?? 0) * (d.precioUnitario ?? 0), 0)
+)
+
+const totalVendidoListado = computed(() =>
+  ventas.value.reduce((sum, v) => sum + Number(v?.totalVenta ?? 0), 0),
+)
+const totalSaldoListado = computed(() =>
+  ventas.value.reduce((sum, v) => sum + Number(v?.saldoPendiente ?? 0), 0),
 )
 
 // Pago

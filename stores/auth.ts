@@ -10,46 +10,27 @@ interface User {
 
 interface AuthState {
   user: User | null
-  token: string | null
   hydrated: boolean
 }
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: null,
-    token: null,
     hydrated: false,
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => !!state.user?.id,
     isAdmin: (state) => state.user?.rol === 'ADMIN',
   },
 
   actions: {
-    setToken(token: string) {
-      this.token = token
-      if (import.meta.client) {
-        localStorage.setItem('jordan_token', token)
-      }
-    },
-
-    setUser(user: User) {
+    setUser(user: User | null) {
       this.user = user
     },
 
-    loadFromStorage() {
-      if (import.meta.client) {
-        const token = localStorage.getItem('jordan_token')
-        if (token) {
-          this.token = token
-        }
-      }
-    },
-
     async hydrateUserFromApi() {
-      if (!this.token) {
-        this.user = null
+      if (!import.meta.client) {
         this.hydrated = true
         return false
       }
@@ -58,16 +39,14 @@ export const useAuthStore = defineStore('auth', {
         const config = useRuntimeConfig()
         const response: any = await $fetch('/auth/me', {
           baseURL: config.public.apiBase,
-          headers: {
-            Authorization: `Bearer ${this.token}`,
-          },
+          credentials: 'include',
         })
 
         const payload = apiUnwrap(response) as any
         const usuario = payload?.usuario
 
         if (!usuario?.id) {
-          this.logout()
+          this.user = null
           this.hydrated = true
           return false
         }
@@ -81,42 +60,42 @@ export const useAuthStore = defineStore('auth', {
         this.hydrated = true
         return true
       } catch (error: any) {
-        console.error('Error en hydrateUserFromApi:', {
-          message: error?.message,
-          status: error?.response?.status,
-          data: error?.response?.data,
-          url: error?.response?.url,
-        })
-        this.logout()
+        const status = Number(error?.response?.status ?? error?.statusCode ?? 0)
+
+        if (status !== 401) {
+          console.error('Error en hydrateUserFromApi:', {
+            message: error?.message,
+            status,
+            data: error?.response?._data ?? error?.response?.data ?? error?.data,
+            url: error?.response?.url,
+          })
+        }
+        this.user = null
         this.hydrated = true
         return false
       }
     },
 
     async bootstrapSession() {
-      this.loadFromStorage()
-
-      if (!this.token) {
-        this.user = null
-        this.hydrated = true
-        return false
-      }
-
-      if (this.user?.id) {
-        this.hydrated = true
-        return true
-      }
-
       return this.hydrateUserFromApi()
     },
 
-    logout() {
-      this.token = null
+    /** Cierra sesión en el servidor (borra cookie HttpOnly) y en el cliente. */
+    async logout() {
+      if (import.meta.client) {
+        try {
+          const config = useRuntimeConfig()
+          await $fetch('/auth/logout', {
+            baseURL: config.public.apiBase,
+            method: 'POST',
+            credentials: 'include',
+          })
+        } catch {
+          // Limpiar estado aunque falle la red
+        }
+      }
       this.user = null
       this.hydrated = true
-      if (import.meta.client) {
-        localStorage.removeItem('jordan_token')
-      }
     },
   },
 })

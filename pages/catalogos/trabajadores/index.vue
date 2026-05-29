@@ -2,7 +2,10 @@
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <h1 class="text-2xl font-bold text-gray-800">Catálogo de Trabajadores</h1>
-      <button class="btn-primary" @click="abrirModal()">+ Nuevo trabajador</button>
+      <button class="btn-primary flex items-center gap-2" @click="abrirModal()">
+        <Plus class="h-4 w-4" />
+        Nuevo trabajador
+      </button>
     </div>
 
     <!-- Filtros -->
@@ -15,7 +18,7 @@
       />
       <select v-model="filtroTipo" class="form-input w-44" @change="pagina = 1; fetchTrabajadores()">
         <option value="">Todos los tipos</option>
-        <option v-for="t in TIPOS" :key="t" :value="t">{{ t }}</option>
+        <option v-for="t in tiposTrabajador" :key="t.nombre" :value="t.nombre">{{ t.nombre }}</option>
       </select>
       <select v-model="filtroActivo" class="form-input w-36" @change="pagina = 1; fetchTrabajadores()">
         <option value="">Todos</option>
@@ -33,6 +36,7 @@
             <th class="px-4 py-3 font-medium">Nombre</th>
             <th class="px-4 py-3 font-medium">Cédula</th>
             <th class="px-4 py-3 font-medium">Tipo</th>
+            <th class="px-4 py-3 font-medium">Cargo</th>
             <th class="px-4 py-3 font-medium">Teléfono</th>
             <th class="px-4 py-3 font-medium">Tarifa base ($)</th>
             <th class="px-4 py-3 font-medium">Saldo operativo ($)</th>
@@ -42,10 +46,10 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="9" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
+            <td colspan="10" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
           </tr>
           <tr v-else-if="!trabajadores.length">
-            <td colspan="9" class="px-4 py-8 text-center text-gray-400">Sin resultados.</td>
+            <td colspan="10" class="px-4 py-8 text-center text-gray-400">Sin resultados.</td>
           </tr>
           <tr
             v-for="t in trabajadores"
@@ -58,6 +62,7 @@
             <td class="px-4 py-3">
               <span class="px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-600 font-medium">{{ t.tipoTrabajador }}</span>
             </td>
+            <td class="px-4 py-3 text-gray-600">{{ t.cargo ?? '—' }}</td>
             <td class="px-4 py-3 text-gray-500">{{ t.telefono ?? '—' }}</td>
             <td class="px-4 py-3 text-right text-gray-700 font-medium">
               {{ formatCurrency(t.tarifaBase ?? 0) }}
@@ -83,6 +88,10 @@
                 >
                   <CheckCircle v-if="t.activo" :size="14" class="text-green-600" />
                   {{ t.activo ? 'Desactivar' : 'Activar' }}
+                </button>
+                <button class="flex items-center gap-1 text-xs text-red-600 hover:underline" @click="eliminarTrabajador(t)">
+                  <Trash2 :size="14" />
+                  Eliminar
                 </button>
               </div>
             </td>
@@ -118,9 +127,9 @@
           <FormField label="Código *" :error="errors.codigo">
             <input v-model="form.codigo" class="form-input" :disabled="!!editando" />
           </FormField>
-          <FormField label="Tipo *">
+          <FormField label="Clasificación *">
             <select v-model="form.tipoTrabajador" class="form-input">
-              <option v-for="tp in TIPOS" :key="tp" :value="tp">{{ tp }}</option>
+              <option v-for="tp in tiposTrabajador" :key="tp.nombre" :value="tp.nombre">{{ tp.nombre }}</option>
             </select>
           </FormField>
           <FormField label="Nombre completo *" :error="errors.nombre" class="col-span-2">
@@ -135,13 +144,22 @@
           <FormField label="Dirección" class="col-span-2">
             <input v-model="form.direccion" class="form-input" />
           </FormField>
+          <FormField label="Cargo / labor principal" class="col-span-2">
+            <select v-model="form.cargo" class="form-input">
+              <option value="">Sin cargo definido</option>
+              <option v-for="labor in laborTipos" :key="labor.id" :value="labor.nombre">
+                {{ labor.nombre }} - {{ tipoPagoLabel(labor.tipo) }}
+              </option>
+            </select>
+          </FormField>
           <FormField label="Modalidad pago *">
             <select v-model="form.modalidadPago" class="form-input">
               <option value="POR_JORNADA">Por jornada</option>
               <option value="POR_HORA">Por hora</option>
+              <option value="POR_PACA">Por paca</option>
             </select>
           </FormField>
-          <FormField :label="form.modalidadPago === 'POR_HORA' ? 'Tarifa base por hora *' : 'Tarifa base por jornada *'" :error="errors.valorPago">
+          <FormField :label="tarifaBaseLabel" :error="errors.valorPago">
             <input
               v-model.number="form.valorPago"
               class="form-input"
@@ -151,7 +169,7 @@
               placeholder="Ej: 42000"
             />
             <p class="mt-1 text-xs text-gray-500">
-              Este valor se usa como tarifa base de la labor del dia. El saldo se actualiza al registrar la labor.
+              {{ tarifaBaseHelp }}
             </p>
           </FormField>
         </div>
@@ -169,7 +187,7 @@
 
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formats'
-import { Edit, CheckCircle, Plus } from 'lucide-vue-next'
+import { Edit, CheckCircle, Plus, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -177,11 +195,13 @@ const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
 
-const TIPOS = ['PERMANENTE', 'TEMPORAL', 'PREVENTISTA', 'DOMICILIARIO', 'MIXTO']
+const TIPOS_FALLBACK = ['PERMANENTE', 'TEMPORAL', 'PREVENTISTA', 'DOMICILIARIO', 'MIXTO'].map((nombre) => ({ nombre }))
 
 const loading = ref(true)
 const saving = ref(false)
 const trabajadores = ref<any[]>([])
+const laborTipos = ref<any[]>([])
+const tiposTrabajador = ref<any[]>(TIPOS_FALLBACK)
 const total = ref(0)
 const pagina = ref(1)
 const LIMITE = 15
@@ -195,16 +215,37 @@ const editando = ref<any>(null)
 const loadingModal = ref(false)
 const form = reactive({
   codigo: '', nombre: '', cedula: '', telefono: '',
-  direccion: '', tipoTrabajador: 'PERMANENTE',
+  direccion: '', tipoTrabajador: 'PERMANENTE', cargo: '',
   modalidadPago: 'POR_JORNADA', valorPago: undefined as number | undefined,
 })
 const errors = reactive({ codigo: '', nombre: '', cedula: '', valorPago: '' })
+const tarifaBaseLabel = computed(() => {
+  if (form.modalidadPago === 'POR_HORA') return 'Tarifa sugerida por hora'
+  if (form.modalidadPago === 'POR_PACA') return 'Tarifa sugerida por paca'
+  return 'Tarifa base por jornada *'
+})
+const tarifaBaseHelp = computed(() => {
+  if (form.modalidadPago === 'POR_HORA') {
+    return 'Opcional. El administrador puede definir el valor real al registrar la labor por horas.'
+  }
+  if (form.modalidadPago === 'POR_PACA') {
+    return 'Opcional. El administrador define pacas y valor por paca al registrar la labor.'
+  }
+  return 'Se paga por jornada registrada en labores. El saldo se actualiza al registrar la labor.'
+})
+
+function tipoPagoLabel(tipo?: string) {
+  if (tipo === 'POR_HORA') return 'por hora'
+  if (tipo === 'POR_PACA') return 'por paca'
+  if (tipo === 'POR_JORNADA') return 'por jornada'
+  return 'manual'
+}
 
 function validarForm(): boolean {
   errors.codigo = !form.codigo.trim() ? 'El código es requerido' : ''
   errors.nombre = !form.nombre.trim() ? 'El nombre es requerido' : ''
   errors.cedula = !form.cedula.trim() ? 'La cédula es requerida' : ''
-  errors.valorPago = !editando.value && (!form.valorPago || form.valorPago <= 0) ? 'El valor es requerido' : 
+  errors.valorPago = form.modalidadPago === 'POR_JORNADA' && !editando.value && (!form.valorPago || form.valorPago <= 0) ? 'El valor es requerido' : 
                      form.valorPago && form.valorPago <= 0 ? 'Debe ser mayor a 0' : ''
   return !errors.codigo && !errors.nombre && !errors.cedula && !errors.valorPago
 }
@@ -227,6 +268,26 @@ async function fetchTrabajadores() {
   }
 }
 
+async function fetchLaborTipos() {
+  try {
+    const res = await api.get('/catalogos/labor-tipos', { params: { activo: 'true' } })
+    const d = apiResponse.unwrap(res) as any
+    laborTipos.value = d.items ?? d
+  } catch {
+    laborTipos.value = []
+  }
+}
+
+async function fetchTiposTrabajador() {
+  try {
+    const res = await api.get('/catalogos/trabajador-tipos', { params: { activo: 'true' } })
+    const d = apiResponse.unwrap(res) as any
+    tiposTrabajador.value = d.items ?? d
+  } catch {
+    tiposTrabajador.value = TIPOS_FALLBACK
+  }
+}
+
 async function abrirModal(t?: any) {
   editando.value = t ?? null
   loadingModal.value = false
@@ -239,6 +300,7 @@ async function abrirModal(t?: any) {
       telefono: t.telefono ?? '',
       direccion: t.direccion ?? '',
       tipoTrabajador: t.tipoTrabajador ?? 'PERMANENTE',
+      cargo: t.cargo ?? '',
       modalidadPago: 'POR_JORNADA', // Default si no encuentra tarifa
       valorPago: undefined,
     }
@@ -251,7 +313,7 @@ async function abrirModal(t?: any) {
       const res = await api.get(`/catalogos/trabajadores/${t.id}`)
       const d = apiResponse.unwrap(res) as any
       const tarifaBase = (d.laboresDisponibles ?? []).find(
-        (lt: any) => ['POR_JORNADA', 'POR_HORA'].includes(lt?.laborTipo?.tipo) && lt?.activo !== false,
+        (lt: any) => ['POR_JORNADA', 'POR_HORA', 'POR_PACA'].includes(lt?.laborTipo?.tipo) && lt?.activo !== false,
       )
       if (tarifaBase?.laborTipo?.tipo) base.modalidadPago = tarifaBase.laborTipo.tipo
       if (tarifaBase?.tarifa !== undefined && tarifaBase?.tarifa !== null) {
@@ -272,6 +334,7 @@ async function abrirModal(t?: any) {
       telefono: '',
       direccion: '',
       tipoTrabajador: 'PERMANENTE',
+      cargo: '',
       modalidadPago: 'POR_JORNADA',
       valorPago: undefined,
     })
@@ -291,6 +354,7 @@ async function guardar() {
       telefono: form.telefono,
       direccion: form.direccion,
       tipoTrabajador: form.tipoTrabajador,
+      cargo: form.cargo || undefined,
       modalidadPago: form.modalidadPago,
     }
     if (form.valorPago && form.valorPago > 0) {
@@ -325,5 +389,20 @@ async function toggleActivo(t: any) {
   }
 }
 
-onMounted(fetchTrabajadores)
+async function eliminarTrabajador(t: any) {
+  if (!confirm(`Eliminar trabajador ${t.nombre}? Esta accion lo retira del catalogo activo.`)) return
+  try {
+    await api.delete(`/catalogos/trabajadores/${t.id}`)
+    notify.success('Trabajador eliminado')
+    await fetchTrabajadores()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'Error al eliminar trabajador')
+  }
+}
+
+onMounted(() => {
+  fetchTrabajadores()
+  fetchLaborTipos()
+  fetchTiposTrabajador()
+})
 </script>

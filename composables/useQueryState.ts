@@ -34,9 +34,10 @@ export function useQueryState<T extends Record<string, any>>(
   }
 
   const state = reactive<T>({ ...initialState, ...stateFromUrl })
-
-  // Debounced sync a URL
   let syncTimeout: NodeJS.Timeout
+  let lastSyncedQuery: string = ''
+
+  // Debounced sync a URL - solo sincroniza si realmente cambió
   const syncToUrlDebounced = () => {
     if (!syncToUrl) return
 
@@ -49,19 +50,22 @@ export function useQueryState<T extends Record<string, any>>(
         }
       })
 
-      router.push({
-        query: newQuery,
-      })
+      const newQueryString = new URLSearchParams(newQuery).toString()
+      if (newQueryString !== lastSyncedQuery) {
+        lastSyncedQuery = newQueryString
+        router.push({
+          query: newQuery,
+        })
+      }
     }, debounceMs)
   }
 
-  // Watch para cambios en state
+  // Watch para cambios en state - mejorado para evitar deep reactivity innecesaria
   watch(
-    () => state,
+    () => JSON.stringify(state),
     () => {
       syncToUrlDebounced()
     },
-    { deep: true }
   )
 
   function setState<K extends keyof T>(key: K, value: T[K]): void {

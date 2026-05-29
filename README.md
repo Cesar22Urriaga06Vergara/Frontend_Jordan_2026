@@ -2,6 +2,17 @@
 
 Dashboard profesional para Purificadora de Agua JORDAN construido con Nuxt 3, TypeScript y Tailwind CSS.
 
+## Despliegue
+
+La arquitectura oficial usa Cloudflare Pages para este frontend y Render para
+el backend. Configura `NUXT_PUBLIC_API_BASE` con la URL publica del backend:
+
+```text
+NUXT_PUBLIC_API_BASE=https://TU-BACKEND.onrender.com/api
+```
+
+Ver tambien `DEPLOYMENT-ARCHITECTURE.md`.
+
 ## 🎨 Características
 
 - **Diseño Responsive** - Funciona en desktop, tablet y mobile

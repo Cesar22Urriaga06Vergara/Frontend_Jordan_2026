@@ -6,9 +6,9 @@
         <h1 class="text-2xl font-bold text-gray-900">Pedidos</h1>
         <p class="text-sm text-gray-600 mt-1">Gestión y seguimiento de pedidos</p>
       </div>
-      <button class="btn-primary flex items-center gap-2 justify-center sm:justify-start" @click="openModal">
+      <NuxtLink to="/pedidos/create" class="btn-primary flex items-center gap-2 justify-center sm:justify-start">
         <Plus :size="16" /> Nuevo pedido
-      </button>
+      </NuxtLink>
     </div>
 
     <!-- Filtros Mejorados -->
@@ -66,13 +66,13 @@
             <td class="px-4 py-4 text-center">
               <div class="flex gap-2 justify-center flex-wrap">
                 <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded text-xs font-medium transition-colors" @click="verDetalle(p)">Ver</button>
-                <button 
+                <NuxtLink
                   v-if="p.estado === 'PENDIENTE'"
-                  class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded text-xs font-medium transition-colors" 
-                  @click="abrirModalEditar(p)"
+                  :to="`/pedidos/${p.id}/edit`"
+                  class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded text-xs font-medium transition-colors"
                 >
                   Editar
-                </button>
+                </NuxtLink>
                 <button
                   class="flex items-center gap-1 text-green-600 hover:text-green-800 hover:bg-green-50 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40"
                   :disabled="printingId === p.id"
@@ -97,69 +97,11 @@
       </div>
     </div>
 
-    <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-          <h3 class="font-semibold text-gray-800 mb-4">{{ editandoPedidoId ? 'Editar pedido' : 'Nuevo pedido' }}</h3>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <FormField label="Cliente" required>
-              <input 
-                v-if="editandoPedidoId"
-                type="text" 
-                class="form-input bg-gray-100" 
-                :value="form.clienteNombre"
-                disabled
-              />
-              <select v-else v-model="form.clienteId" class="form-input">
-                <option :value="undefined">Seleccionar…</option>
-                <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">{{ cliente.nombre }}</option>
-              </select>
-            </FormField>
-            <FormField label="Fecha" required>
-              <input v-model="form.fecha" type="date" class="form-input" />
-            </FormField>
-          </div>
-
-          <div class="space-y-3 mb-4">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-gray-700">Detalles</span>
-              <button class="text-xs text-blue-600 hover:underline" @click="agregarDetalle">+ Añadir producto</button>
-            </div>
-            <div v-for="(detalle, index) in form.detalles" :key="index" class="grid grid-cols-[1fr_90px_120px_32px] gap-2 items-end">
-              <select v-model="detalle.productoId" class="form-input">
-                <option :value="undefined">Producto…</option>
-                <option v-for="producto in productos" :key="producto.id" :value="producto.id">{{ producto.nombre }}</option>
-              </select>
-              <input v-model.number="detalle.cantidad" class="form-input" type="number" min="1" placeholder="Cant." />
-              <input v-model.number="detalle.precioUnitario" class="form-input" type="number" min="1" placeholder="Precio" />
-              <button class="text-red-500 text-lg" @click="form.detalles.splice(index, 1)">×</button>
-            </div>
-          </div>
-
-          <FormField label="Observaciones">
-            <textarea v-model="form.observaciones" rows="2" class="form-input resize-none" />
-          </FormField>
-
-          <div class="flex justify-end gap-3 pt-4">
-            <button type="button" class="btn-secondary" @click="cerrarModal">Cancelar</button>
-            <button 
-              type="button" 
-              class="btn-primary" 
-              :disabled="saving || (editandoPedidoId ? !form.detalles.length : (!form.clienteId || !form.detalles.length))"
-              @click="editandoPedidoId ? actualizarPedido() : crearPedido()"
-            >
-              {{ saving ? 'Guardando…' : (editandoPedidoId ? 'Actualizar' : 'Guardar') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { formatDate, todayISO } from '~/utils/formats'
+import { formatDate } from '~/utils/formats'
 import { Plus, Printer } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -173,11 +115,7 @@ const printingId = ref<number | null>(null)
 
 const loading = ref(false)
 const saving = ref(false)
-const showModal = ref(false)
-const editandoPedidoId = ref<number | null>(null)
 const pedidos = ref<any[]>([])
-const clientes = ref<any[]>([])
-const productos = ref<any[]>([])
 const pagination = reactive({ page: 1, total: 0, totalPages: 1 })
 
 const estados = [
@@ -189,13 +127,6 @@ const estados = [
 ]
 
 const filters = reactive({ estado: '', fechaDesde: '', fechaHasta: '' })
-const form = reactive({
-  clienteId: undefined as number | undefined,
-  clienteNombre: '',
-  fecha: todayISO(),
-  detalles: [] as { productoId: number | undefined; cantidad: number; precioUnitario: number }[],
-  observaciones: '',
-})
 
 async function loadPedidos() {
   loading.value = true
@@ -215,105 +146,6 @@ async function loadPedidos() {
     error('Error al cargar pedidos')
   } finally {
     loading.value = false
-  }
-}
-
-async function loadCatalogos() {
-  try {
-    const [clientesRes, productosRes] = await Promise.all([
-      api.get('/catalogos/clientes?activo=true&limit=200'),
-      api.get('/catalogos/productos?activo=true&limit=200'),
-    ])
-    clientes.value = apiResponse.list(clientesRes)
-    productos.value = apiResponse.list(productosRes)
-  } catch {
-    clientes.value = []
-    productos.value = []
-    error('Error al cargar catálogos')
-  }
-}
-
-function openModal() {
-  form.clienteId = undefined
-  form.clienteNombre = ''
-  form.fecha = todayISO()
-  form.detalles = []
-  form.observaciones = ''
-  editandoPedidoId.value = null
-  showModal.value = true
-  if (!clientes.value.length || !productos.value.length) {
-    loadCatalogos()
-  }
-}
-
-function cerrarModal() {
-  showModal.value = false
-  editandoPedidoId.value = null
-  form.clienteId = undefined
-  form.clienteNombre = ''
-  form.fecha = todayISO()
-  form.detalles = []
-  form.observaciones = ''
-}
-
-function abrirModalEditar(pedido: any) {
-  editandoPedidoId.value = pedido.id
-  form.clienteId = pedido.clienteId
-  form.clienteNombre = pedido.cliente?.nombre || ''
-  form.fecha = pedido.fecha?.split('T')[0] || todayISO()
-  form.observaciones = pedido.observaciones || ''
-  form.detalles = pedido.detalles.map((d: any) => ({
-    productoId: d.productoId,
-    cantidad: d.cantidad,
-    precioUnitario: d.precioUnitario,
-  }))
-  showModal.value = true
-  if (!clientes.value.length || !productos.value.length) {
-    loadCatalogos()
-  }
-}
-
-function agregarDetalle() {
-  form.detalles.push({ productoId: undefined, cantidad: 1, precioUnitario: 0 })
-}
-
-async function crearPedido() {
-  saving.value = true
-  try {
-    await api.post('/operaciones/pedidos', {
-      clienteId: form.clienteId,
-      fecha: form.fecha,
-      detalles: form.detalles.filter(d => d.productoId && d.cantidad > 0 && d.precioUnitario > 0),
-      observaciones: form.observaciones || undefined,
-      esDeRuta: false,
-    })
-    success('Pedido creado')
-    cerrarModal()
-    pagination.page = 1
-    await loadPedidos()
-  } catch (e: any) {
-    error(e?.response?.data?.message || 'Error al crear pedido')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function actualizarPedido() {
-  if (!editandoPedidoId.value) return
-  saving.value = true
-  try {
-    await api.patch(`/operaciones/pedidos/${editandoPedidoId.value}`, {
-      fecha: form.fecha,
-      detalles: form.detalles.filter(d => d.productoId && d.cantidad > 0 && d.precioUnitario > 0),
-      observaciones: form.observaciones || undefined,
-    })
-    success('Pedido actualizado')
-    cerrarModal()
-    await loadPedidos()
-  } catch (e: any) {
-    error(e?.response?.data?.message || 'Error al actualizar pedido')
-  } finally {
-    saving.value = false
   }
 }
 

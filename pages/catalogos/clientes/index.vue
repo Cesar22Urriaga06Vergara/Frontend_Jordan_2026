@@ -5,9 +5,9 @@
         <h1 class="text-2xl font-bold text-gray-900">Clientes</h1>
         <p class="text-sm text-gray-600 mt-1">Gestión de información de clientes</p>
       </div>
-      <button class="btn-primary flex items-center gap-2 justify-center sm:justify-start" @click="abrirModalCrear()">
+      <NuxtLink to="/catalogos/clientes/create" class="btn-primary flex items-center gap-2 justify-center sm:justify-start">
         <Plus :size="16" /> Nuevo cliente
-      </button>
+      </NuxtLink>
     </div>
 
     <!-- Búsqueda y Filtros Mejorados -->
@@ -21,7 +21,7 @@
               placeholder="Nombre, código, teléfono..." 
               class="form-input w-full pl-10" 
             />
-            <span class="absolute left-3 top-3 text-gray-400">🔍</span>
+            <Search class="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           </div>
         </div>
         <div class="w-48">
@@ -35,8 +35,8 @@
           <label class="block text-xs font-medium text-gray-700 mb-1">Estado</label>
           <select v-model="filtroActivo" class="form-input w-full">
             <option value="">Todos</option>
-            <option value="true">✓ Activos</option>
-            <option value="false">✗ Inactivos</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
           </select>
         </div>
       </div>
@@ -85,8 +85,9 @@
               <template v-else>—</template>
             </td>
             <td class="px-4 py-4">
-              <span class="px-2.5 py-1 rounded-full text-xs font-bold" :class="c.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
-                {{ c.activo ? '✓ Activo' : '✗ Inactivo' }}
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold" :class="c.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+                <component :is="c.activo ? CheckCircle : XCircle" class="h-3.5 w-3.5" />
+                <span>{{ c.activo ? 'Activo' : 'Inactivo' }}</span>
               </span>
             </td>
             <td class="px-4 py-4 text-right">
@@ -95,10 +96,10 @@
                   <Eye :size="14" />
                   Precios
                 </button>
-                <button class="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded transition-colors" @click="abrirModalEditar(c)">
+                <NuxtLink :to="`/catalogos/clientes/${c.id}`" class="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-2 py-1 rounded transition-colors">
                   <Edit :size="14" />
                   Editar
-                </button>
+                </NuxtLink>
                 <button class="flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors" :class="c.activo ? 'text-orange-600 hover:text-orange-800 hover:bg-orange-50' : 'text-green-600 hover:text-green-800 hover:bg-green-50'" @click="abrirConfirmDesactivar(c)">
                   <CheckCircle v-if="c.activo" :size="14" class="text-green-600" />
                   {{ c.activo ? 'Desactivar' : 'Activar' }}
@@ -119,49 +120,6 @@
         <button class="btn-secondary px-3 py-1 text-xs" :disabled="pagina === 1" @click="pagina--">Ant.</button>
         <span class="px-2 py-1">{{ pagina }} / {{ totalPaginas }}</span>
         <button class="btn-secondary px-3 py-1 text-xs" :disabled="pagina >= totalPaginas" @click="pagina++">Sig.</button>
-      </div>
-    </div>
-
-    <div v-if="modalForm" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="closeModalForm()">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-lg font-bold text-gray-800">{{ editando ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Código *" :error="errors.codigo">
-            <input v-model="form.codigo" class="form-input" :disabled="!!editando" />
-          </FormField>
-          <FormField label="Tipo *" :error="errors.tipo">
-            <select v-model="form.tipo" class="form-input">
-              <option v-for="tipo in TIPOS_CLIENTE" :key="tipo" :value="tipo">{{ tipo }}</option>
-            </select>
-          </FormField>
-          <FormField label="Nombre *" :error="errors.nombre" class="col-span-2">
-            <input v-model="form.nombre" class="form-input" />
-          </FormField>
-          <FormField label="NIT">
-            <input v-model="form.nit" class="form-input" />
-          </FormField>
-          <FormField label="Cédula">
-            <input v-model="form.cedula" class="form-input" />
-          </FormField>
-          <FormField label="Teléfono">
-            <input v-model="form.telefono" class="form-input" />
-          </FormField>
-          <FormField label="Dirección">
-            <input v-model="form.direccion" class="form-input" />
-          </FormField>
-          <FormField label="Vereda">
-            <input v-model="form.vereda" class="form-input" />
-          </FormField>
-          <FormField label="Observaciones" class="col-span-2">
-            <textarea v-model="form.observaciones" rows="2" class="form-input resize-none" />
-          </FormField>
-        </div>
-
-        <div class="flex justify-end gap-2 pt-2">
-          <button class="btn-secondary" @click="closeModalForm()">Cancelar</button>
-          <button class="btn-primary" :disabled="saving" @click="guardarCliente">{{ saving ? 'Guardando…' : 'Guardar' }}</button>
-        </div>
       </div>
     </div>
 
@@ -239,11 +197,10 @@
 
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formats'
-import { CheckCircle, Edit, Eye, Plus, Trash2 } from 'lucide-vue-next'
+import { CheckCircle, Edit, Eye, Plus, Search, Trash2, XCircle } from 'lucide-vue-next'
 import { useCRUD } from '~/composables/useCRUD'
 import { usePagination } from '~/composables/usePagination'
 import { useSearch } from '~/composables/useSearch'
-import { useForm } from '~/composables/useForm'
 import { useModal } from '~/composables/useModal'
 import { useApi } from '~/composables/useApi'
 import { useNotification } from '~/composables/useNotification'
@@ -267,7 +224,6 @@ const {
   endpoint: '/catalogos/clientes',
   api,
   notify,
-  onSuccess: () => modalForm.value = false
 })
 
 const { 
@@ -283,27 +239,15 @@ const {
   setSearchFields
 } = useSearch(clientes)
 
-const {
-  form,
-  errors,
-  validate: validateForm
-} = useForm(
-  { codigo: '', nombre: '', tipo: 'TIENDA', nit: '', cedula: '', telefono: '', direccion: '', vereda: '', observaciones: '' },
-  {
-    codigo: (v: string) => !v.trim() ? 'El código es requerido' : null,
-    nombre: (v: string) => !v.trim() ? 'El nombre es requerido' : null,
-    tipo: (v: string) => !v ? 'El tipo es requerido' : null,
-  }
-)
-
-const { isOpen: modalForm, open: openModalForm, close: closeModalForm } = useModal()
-const { isOpen: modalPrecios, open: openModalPrecios, close: closeModalPrecios } = useModal()
+const { 
+  isOpen: modalPrecios, 
+  open: openModalPrecios, 
+  close: closeModalPrecios 
+} = useModal()
 const modalConfirm = ref()
 const clienteADesactivar = ref<any>(null)
 const showConfirmDeleteCliente = ref(false)
 const clienteAEliminar = ref<any>(null)
-const editando = ref<any>(null)
-
 // --- Precios especiales ---
 const precios = ref<any[]>([])
 const productos = ref<any[]>([])
@@ -319,56 +263,6 @@ async function searchAndReset() {
   await fetchClientes()
 }
 
-function abrirModalCrear() {
-  editando.value = null
-  form.codigo = ''
-  form.nombre = ''
-  form.tipo = 'TIENDA'
-  form.nit = ''
-  form.cedula = ''
-  form.telefono = ''
-  form.direccion = ''
-  form.vereda = ''
-  form.observaciones = ''
-  openModalForm()
-}
-
-function abrirModalEditar(c: any) {
-  editando.value = c
-  Object.assign(form, {
-    codigo: c.codigo ?? '',
-    nombre: c.nombre ?? '',
-    tipo: c.tipo ?? 'TIENDA',
-    nit: c.nit ?? '',
-    cedula: c.cedula ?? '',
-    telefono: c.telefono ?? '',
-    direccion: c.direccion ?? '',
-    vereda: c.vereda ?? '',
-    observaciones: c.observaciones ?? '',
-  })
-  openModalForm()
-}
-
-async function guardarCliente() {
-  if (!validateForm()) return
-  
-  saving.value = true
-  try {
-    if (editando.value) {
-      await api.put(`/catalogos/clientes/${editando.value.id}`, form)
-      notify.success('Cliente actualizado')
-    } else {
-      await api.post('/catalogos/clientes', form)
-      notify.success('Cliente creado')
-    }
-    closeModalForm()
-    await fetchClientes()
-  } catch (e: any) {
-    notify.error(apiResponse.errorMessage(e))
-  } finally {
-    saving.value = false
-  }
-}
 
 function confirmarEliminarCliente(c: any) {
   clienteAEliminar.value = c

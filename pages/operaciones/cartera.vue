@@ -1,33 +1,57 @@
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <h1 class="text-2xl font-bold text-gray-800">Cartera</h1>
-      <button class="btn-secondary" @click="fetchCartera">Actualizar</button>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Cartera</h1>
+        <p class="text-sm text-gray-500">Saldos pendientes por cliente y venta.</p>
+      </div>
+      <button class="btn-secondary inline-flex items-center gap-2" @click="fetchCartera">
+        <RefreshCw class="h-4 w-4" />
+        Actualizar
+      </button>
     </div>
 
     <!-- Resumen -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="card">
-        <p class="text-sm text-gray-500">Total en cartera</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ formatCurrency(totalCartera) }}</p>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-orange-50 text-orange-700 flex items-center justify-center">
+          <WalletCards class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Total en cartera</p>
+          <p class="text-2xl font-bold text-gray-800 mt-1">{{ formatCurrency(totalCartera) }}</p>
+        </div>
       </div>
-      <div class="card">
-        <p class="text-sm text-gray-500">Clientes con deuda</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ cartera.length }}</p>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <UsersRound class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Clientes con deuda</p>
+          <p class="text-2xl font-bold text-gray-800 mt-1">{{ clientesConDeuda }}</p>
+        </div>
       </div>
-      <div class="card">
-        <p class="text-sm text-gray-500">Deuda promedio</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ formatCurrency(promedioCartera) }}</p>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
+          <CreditCard class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Deuda promedio</p>
+          <p class="text-2xl font-bold text-gray-800 mt-1">{{ formatCurrency(promedioCartera) }}</p>
+        </div>
       </div>
     </div>
 
     <!-- Filtros -->
-    <div class="card flex flex-wrap gap-3">
-      <input
-        v-model="search"
-        placeholder="Buscar cliente…"
-        class="form-input max-w-xs"
-      />
+    <div class="card">
+      <div class="relative max-w-md">
+        <Search class="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <input
+          v-model="search"
+          placeholder="Buscar cliente o venta…"
+          class="form-input pl-10"
+        />
+      </div>
     </div>
 
     <!-- Tabla -->
@@ -48,7 +72,7 @@
             <td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
           </tr>
           <tr v-else-if="!filtradas.length">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-400">Sin deudas pendientes.</td>
+            <td colspan="6" class="px-4 py-10 text-center text-gray-400">Sin deudas pendientes.</td>
           </tr>
           <tr
             v-for="c in filtradas"
@@ -62,9 +86,12 @@
             <td class="px-4 py-3"><EstadoBadge :estado="c.estado ?? 'ACTIVO'" /></td>
             <td class="px-4 py-3 text-right">
               <button
-                class="text-xs text-blue-600 hover:underline"
+                class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1"
                 @click="abrirPagoModal(c)"
-              >Registrar pago</button>
+              >
+                <CreditCard class="h-3.5 w-3.5" />
+                Registrar pago
+              </button>
             </td>
           </tr>
         </tbody>
@@ -77,12 +104,14 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalPago = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <h2 class="font-bold text-gray-800">Registrar pago</h2>
-        <p class="text-sm text-gray-500">
-          {{ carteraSeleccionada?.cliente?.nombre }} —
-          Saldo: {{ formatCurrency(carteraSeleccionada?.saldoPendiente ?? 0) }}
-        </p>
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+        <div>
+          <h2 class="font-bold text-gray-800">Registrar pago</h2>
+          <p class="text-sm text-gray-500 mt-1">
+            {{ carteraSeleccionada?.cliente?.nombre }} —
+            Saldo: {{ formatCurrency(carteraSeleccionada?.saldoPendiente ?? 0) }}
+          </p>
+        </div>
 
         <FormField label="Monto ($) *">
           <input v-model.number="pagoForm.monto" class="form-input" type="number" min="0" />
@@ -99,7 +128,8 @@
 
         <div class="flex justify-end gap-2 pt-2">
           <button class="btn-secondary" @click="modalPago = false">Cancelar</button>
-          <button class="btn-primary" :disabled="saving || !pagoForm.monto" @click="registrarPago">
+          <button class="btn-primary inline-flex items-center gap-2" :disabled="saving || !pagoForm.monto" @click="registrarPago">
+            <CreditCard class="h-4 w-4" />
             {{ saving ? 'Guardando…' : 'Registrar' }}
           </button>
         </div>
@@ -109,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { CreditCard, RefreshCw, Search, UsersRound, WalletCards } from 'lucide-vue-next'
 import { formatCurrency } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
@@ -126,12 +157,21 @@ const modalPago = ref(false)
 const carteraSeleccionada = ref<any>(null)
 const pagoForm = reactive({ monto: 0, formaPago: 'EFECTIVO', notas: '' })
 
+function toMoneyNumber(value: unknown): number {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
 const totalCartera = computed(() =>
-  cartera.value.reduce((s, c) => s + (c.saldoPendiente ?? 0), 0)
+  cartera.value.reduce((s, c) => s + toMoneyNumber(c.saldoPendiente), 0)
+)
+
+const clientesConDeuda = computed(() =>
+  new Set(cartera.value.map(c => c.clienteId ?? c.cliente?.id).filter(Boolean)).size
 )
 
 const promedioCartera = computed(() =>
-  cartera.value.length ? totalCartera.value / cartera.value.length : 0
+  clientesConDeuda.value ? totalCartera.value / clientesConDeuda.value : 0
 )
 
 const filtradas = computed(() => {

@@ -3,7 +3,10 @@
     <div class="max-w-7xl mx-auto">
       <!-- Header -->
       <div class="mb-8">
-        <h1 class="text-4xl font-bold mb-2">📊 Monitoring & Métricas</h1>
+        <div class="flex items-center gap-3 mb-2">
+          <BarChart3 class="h-10 w-10 text-cyan-400" />
+          <h1 class="text-4xl font-bold">Monitoring & Métricas</h1>
+        </div>
         <p class="text-slate-400">Sistema en tiempo real | Actualizado: {{ lastUpdate }}</p>
       </div>
 
@@ -48,7 +51,10 @@
         <!-- Request Stats -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 class="text-xl font-bold mb-4">📈 Estadísticas de Requests</h2>
+            <div class="flex items-center gap-2 text-xl font-bold mb-4">
+            <TrendingUp class="h-5 w-5 text-slate-300" />
+            <span>Estadísticas de Requests</span>
+          </div>
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-slate-400">Total Requests:</span>
@@ -72,7 +78,10 @@
           </div>
 
           <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-            <h2 class="text-xl font-bold mb-4">🕐 Cambios (últimos 30 días)</h2>
+            <div class="flex items-center gap-2 text-xl font-bold mb-4">
+            <Clock class="h-5 w-5 text-slate-300" />
+            <span>Cambios (últimos 30 días)</span>
+          </div>
             <div class="space-y-3">
               <div class="flex justify-between">
                 <span class="text-slate-400">Total Cambios:</span>
@@ -88,7 +97,10 @@
 
         <!-- Top Operations -->
         <div class="bg-slate-800/50 border border-slate-700 rounded-lg p-6 mb-8">
-          <h2 class="text-xl font-bold mb-4">🔥 Top 10 Operaciones</h2>
+          <div class="flex items-center gap-2 text-xl font-bold mb-4">
+            <Zap class="h-5 w-5 text-slate-300" />
+            <span>Top 10 Operaciones</span>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-slate-700/50">
@@ -117,7 +129,10 @@
 
         <!-- Top Errors -->
         <div v-if="metrics.system?.topErrors?.length > 0" class="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
-          <h2 class="text-xl font-bold mb-4">⚠️ Errores Más Frecuentes</h2>
+          <div class="flex items-center gap-2 text-xl font-bold mb-4">
+            <AlertTriangle class="h-5 w-5 text-slate-300" />
+            <span>Errores Más Frecuentes</span>
+          </div>
           <div class="space-y-2">
             <div v-for="err in metrics.system?.topErrors" :key="err.error" class="flex justify-between items-center p-3 bg-red-500/10 rounded">
               <span class="text-slate-300">{{ err.error }}</span>
@@ -132,14 +147,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { BarChart3, Clock, TrendingUp, Zap, AlertTriangle } from 'lucide-vue-next'
 import { useApi } from '~/composables/useApi'
+import { useApiResponse } from '~/composables/useApiResponse'
 
-const { get } = useApi()
+const api = useApi()
+const apiResponse = useApiResponse()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const lastUpdate = ref('')
 const metrics = ref<any>({})
+let metricsTimer: NodeJS.Timeout | null = null
 
 const statusColor = computed(() => {
   const status = metrics.value.health?.status
@@ -171,8 +190,8 @@ async function loadMetrics() {
     loading.value = true
     error.value = null
 
-    const response = await get('/monitoring/metrics/dashboard')
-    metrics.value = response.data
+    const response = await api.get('/monitoring/metrics/dashboard')
+    metrics.value = apiResponse.unwrap(response) as any
 
     lastUpdate.value = new Date().toLocaleTimeString('es-ES', {
       hour: '2-digit',
@@ -189,6 +208,10 @@ async function loadMetrics() {
 onMounted(() => {
   loadMetrics()
   // Recargar cada 30 segundos
-  setInterval(loadMetrics, 30000)
+  metricsTimer = setInterval(loadMetrics, 30000)
+})
+
+onUnmounted(() => {
+  if (metricsTimer) clearInterval(metricsTimer)
 })
 </script>

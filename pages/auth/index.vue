@@ -1,10 +1,12 @@
 <template>
   <NuxtLayout name="auth">
     <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8">
-      <!-- Logo -->
+      <!-- Logo → /LOGO.png -->
       <div class="text-center mb-8">
-        <div class="w-16 h-16 rounded-full bg-blue-950 flex items-center justify-center mx-auto mb-3">
-          <span class="text-3xl font-bold text-cyan-400">J</span>
+        <div
+          class="w-20 h-20 mx-auto mb-3 rounded-full bg-white flex items-center justify-center shadow-lg ring-4 ring-blue-950/10 overflow-hidden"
+        >
+          <img src="/LOGO.png" alt="JORDAN" class="h-[4.5rem] w-[4.5rem] object-contain p-1" width="72" height="72" />
         </div>
         <h1 class="text-2xl font-bold text-blue-950">JORDAN</h1>
         <p class="text-gray-500 text-sm mt-1">Purificadora de Agua</p>
@@ -69,7 +71,6 @@ async function handleLogin() {
   try {
     const res = await api.post('/auth/login', form)
     const payload = apiResponse.unwrap(res) as any
-    authStore.setToken(payload.access_token)
     authStore.setUser(payload.usuario)
     await router.push('/')
   } catch (e: any) {

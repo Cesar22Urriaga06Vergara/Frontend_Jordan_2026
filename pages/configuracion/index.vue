@@ -60,7 +60,10 @@
         <p class="text-sm text-gray-500">{{ total }} usuarios registrados</p>
         <div class="flex items-center gap-3">
           <button class="text-xs text-blue-600 hover:underline" @click="fetchUsuarios">Actualizar</button>
-          <button class="btn-primary text-xs py-1.5" @click="modalCreateUser = true">+ Nuevo usuario</button>
+          <button class="btn-primary text-xs py-1.5 flex items-center gap-2" @click="modalCreateUser = true">
+            <Plus class="h-4 w-4" />
+            Nuevo usuario
+          </button>
         </div>
       </div>
 
@@ -175,6 +178,7 @@
 </template>
 
 <script setup lang="ts">
+import { Plus } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ middleware: 'auth' })

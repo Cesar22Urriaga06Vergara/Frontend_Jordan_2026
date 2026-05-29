@@ -21,7 +21,7 @@
     "axios": "^1.6.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
-    "lucide-vue-next": "^0.517.0",
+    "lucide-vue-next": "^1.0.0",
     "nuxt": "^3.8.0",
     "pinia": "^2.1.6",
     "vue": "^3.3.8",

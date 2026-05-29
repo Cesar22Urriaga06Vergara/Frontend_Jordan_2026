@@ -1,34 +1,53 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold text-gray-800">Caja</h1>
-      <button class="btn-primary flex items-center gap-2" @click="abrirModalEgreso">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Caja</h1>
+        <p class="text-sm text-gray-500">Resumen del efectivo, ingresos y egresos del día.</p>
+      </div>
+      <button class="btn-primary inline-flex items-center justify-center gap-2" @click="abrirModalEgreso">
         <Plus :size="16" /> Registrar egreso
       </button>
     </div>
 
     <!-- Info -->
-    <div class="card bg-blue-50 border border-blue-100">
-      <p class="text-sm text-blue-700 leading-relaxed">
+    <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 flex items-start gap-3">
+      <WalletCards class="h-5 w-5 mt-0.5 text-blue-600" />
+      <p class="text-sm text-blue-800 leading-relaxed">
         Los movimientos de caja se registran automáticamente cuando creas ventas, cobras pagos,
         pagas a trabajadores, registras anticipos o abres/cierras el día. Consulta el estado
-        actual del día en <NuxtLink to="/diario" class="underline font-medium">Flujo Diario</NuxtLink>.
+        actual en <NuxtLink to="/operaciones/diario" class="underline font-semibold">Flujo Diario</NuxtLink>.
       </p>
     </div>
 
     <!-- Resumen del día -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="card">
-        <p class="text-sm text-gray-500">Apertura hoy</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ formatCurrency(resumen.apertura) }}</p>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <CalendarDays class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Apertura hoy</p>
+          <p class="text-2xl font-bold text-gray-800 mt-1">{{ formatCurrency(resumen.apertura) }}</p>
+        </div>
       </div>
-      <div class="card">
-        <p class="text-sm text-gray-500">Ingresos del día</p>
-        <p class="text-2xl font-bold text-green-700 mt-1">{{ formatCurrency(resumen.ingresos) }}</p>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
+          <ArrowDownCircle class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Ingresos del día</p>
+          <p class="text-2xl font-bold text-green-700 mt-1">{{ formatCurrency(resumen.ingresos) }}</p>
+        </div>
       </div>
-      <div class="card">
-        <p class="text-sm text-gray-500">Egresos del día</p>
-        <p class="text-2xl font-bold text-red-600 mt-1">{{ formatCurrency(resumen.egresos) }}</p>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+          <ArrowUpCircle class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Egresos del día</p>
+          <p class="text-2xl font-bold text-red-600 mt-1">{{ formatCurrency(resumen.egresos) }}</p>
+        </div>
       </div>
     </div>
 
@@ -39,27 +58,34 @@
           {{ formatCurrency(saldoEstimado) }}
         </p>
       </div>
-      <div class="text-4xl opacity-20">🏦</div>
+      <div class="text-slate-300">
+        <CreditCard class="h-12 w-12" />
+      </div>
     </div>
 
     <!-- Estado del día -->
     <div class="card space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold text-gray-700">Estado operacional — hoy</h2>
-        <button class="text-xs text-blue-600 hover:underline" @click="fetchEstado">Actualizar</button>
+        <button class="text-xs text-blue-600 hover:underline inline-flex items-center gap-1" @click="fetchEstado">
+          <RefreshCw class="h-3.5 w-3.5" />
+          Actualizar
+        </button>
       </div>
       <div v-if="loadingEstado" class="text-gray-400 text-sm">Cargando…</div>
       <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         <div>
           <p class="text-gray-500">Apertura</p>
-          <p class="font-semibold" :class="estado.apertura ? 'text-green-700' : 'text-gray-400'">
-            {{ estado.apertura ? '✓ Abierto' : '— Sin abrir' }}
+          <p class="font-semibold flex items-center gap-2" :class="estado.apertura ? 'text-green-700' : 'text-gray-400'">
+            <component :is="estado.apertura ? CheckCircle : Minus" class="h-4 w-4" />
+            <span>{{ estado.apertura ? 'Abierto' : 'Sin abrir' }}</span>
           </p>
         </div>
         <div>
           <p class="text-gray-500">Cierre</p>
-          <p class="font-semibold" :class="estado.cierre ? 'text-blue-700' : 'text-gray-400'">
-            {{ estado.cierre ? '✓ Cerrado' : '— Pendiente' }}
+          <p class="font-semibold flex items-center gap-2" :class="estado.cierre ? 'text-blue-700' : 'text-gray-400'">
+            <component :is="estado.cierre ? CheckCircle : Minus" class="h-4 w-4" />
+            <span>{{ estado.cierre ? 'Cerrado' : 'Pendiente' }}</span>
           </p>
         </div>
         <div>
@@ -73,20 +99,28 @@
       </div>
     </div>
 
-    <div class="text-center pt-4">
-      <NuxtLink to="/diario" class="btn-primary inline-flex items-center gap-2">
-        📅 Ir a Flujo Diario
+    <div class="flex justify-center">
+      <NuxtLink to="/operaciones/diario" class="btn-primary inline-flex items-center gap-2">
+        <CalendarDays class="h-4 w-4" />
+        Ir a Flujo Diario
       </NuxtLink>
     </div>
 
     <div class="card space-y-3">
       <div class="flex items-center justify-between">
         <h2 class="font-semibold text-gray-700">Egresos del día</h2>
-        <button class="text-xs text-blue-600 hover:underline" @click="fetchEgresos">Actualizar</button>
+        <button class="text-xs text-blue-600 hover:underline inline-flex items-center gap-1" @click="fetchEgresos">
+          <RefreshCw class="h-3.5 w-3.5" />
+          Actualizar
+        </button>
       </div>
 
       <div v-if="loadingEgresos" class="text-sm text-gray-400">Cargando...</div>
-      <div v-else-if="!egresos.length" class="text-sm text-gray-400">Sin egresos registrados hoy.</div>
+      <div v-else-if="!egresos.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 text-center py-8 px-4">
+        <ArrowUpCircle class="h-8 w-8 text-gray-300 mx-auto mb-2" />
+        <p class="font-medium text-gray-700">Sin egresos registrados hoy</p>
+        <p class="text-sm text-gray-500 mt-1">Cuando registres compras, pagos o salidas manuales aparecerán aquí.</p>
+      </div>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -124,8 +158,11 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalEgreso = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-        <h2 class="font-bold text-gray-800">Registrar egreso</h2>
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
+        <div>
+          <h2 class="font-bold text-gray-800">Registrar egreso</h2>
+          <p class="text-sm text-gray-500 mt-1">Movimiento manual de salida de caja.</p>
+        </div>
 
         <FormField label="Concepto *" :error="egresoErrors.concepto">
           <input v-model="egresoForm.concepto" class="form-input" placeholder="Ej: Compra de papelería" />
@@ -169,7 +206,17 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDateTime, todayISO } from '~/utils/formats'
-import { Plus } from 'lucide-vue-next'
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  CalendarDays,
+  CheckCircle,
+  CreditCard,
+  Minus,
+  Plus,
+  RefreshCw,
+  WalletCards,
+} from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 

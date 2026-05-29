@@ -4,10 +4,11 @@
     :class="{ 'opacity-60': loading }"
   >
     <div
-      class="w-14 h-14 rounded-lg flex items-center justify-center text-3xl flex-shrink-0 shadow-sm"
+      class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm"
       :class="bgClass"
     >
-      {{ icon }}
+      <component v-if="isComponentIcon" :is="icon" class="h-7 w-7 text-gray-700" />
+      <span v-else class="text-3xl">{{ icon }}</span>
     </div>
     <div class="flex-1">
       <p class="text-xs text-gray-500 font-bold uppercase tracking-widest">{{ label }}</p>
@@ -19,13 +20,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { Component } from 'vue'
+
 const props = defineProps<{
   label: string
   value: string
-  icon: string
+  icon?: Component | string
   color: 'green' | 'blue' | 'orange' | 'purple' | 'red'
   loading?: boolean
 }>()
+
+const isComponentIcon = computed(() => props.icon && typeof props.icon !== 'string')
 
 const bgClass = computed(() => ({
   green: 'bg-green-100',

@@ -1,12 +1,24 @@
 # Nuxt
 .nuxt/
-build/
+.output/
+.data/
+.nitro/
+.cache/
 dist/
-.nuxt
-.output
+build/
+.vercel/
+.netlify/
+.wrangler/
 
 # Dependencies
 node_modules/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs and diagnostics
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -15,11 +27,14 @@ pnpm-debug.log*
 # Environment
 .env
 .env.local
-.env.*.local
+.env.*
+!.env.example
+.dev.vars
 
 # IDE
 .vscode/
 .idea/
+.fleet/
 .sublime-workspace
 .sublime-project
 *.swp
@@ -29,14 +44,29 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Coverage
+# Test outputs
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
 
-# Logs
-logs/
-*.log
+# Secrets and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
 
-# Build
-.cache/
+# Runtime and temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+*.tmp
+*.bak
+*.backup
+*.old
+*.orig

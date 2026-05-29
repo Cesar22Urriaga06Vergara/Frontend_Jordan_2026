@@ -1,6 +1,45 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-800">Trabajadores</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Trabajadores</h1>
+        <p class="text-sm text-gray-500">Labores, pagos, anticipos y saldos pendientes.</p>
+      </div>
+      <button class="btn-secondary inline-flex items-center gap-2" @click="fetchTrabajadores">
+        <RefreshCw class="h-4 w-4" />
+        Actualizar
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <UsersRound class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Trabajadores activos</p>
+          <p class="text-2xl font-bold text-gray-800">{{ trabajadoresActivos }}</p>
+        </div>
+      </div>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
+          <HandCoins class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Saldo por pagar</p>
+          <p class="text-2xl font-bold text-gray-800">{{ formatCurrency(saldoTotalTrabajadores) }}</p>
+        </div>
+      </div>
+      <div class="card flex items-center gap-4">
+        <div class="h-11 w-11 rounded-lg bg-orange-50 text-orange-700 flex items-center justify-center">
+          <ClipboardList class="h-5 w-5" />
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">Labores hoy</p>
+          <p class="text-2xl font-bold text-gray-800">{{ laboresHoy.length }}</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Tabs -->
     <div class="flex gap-1 border-b border-gray-200">
@@ -12,7 +51,12 @@
           ? 'border-blue-600 text-blue-600'
           : 'border-transparent text-gray-500 hover:text-gray-700'"
         @click="tabActivo = tab.id"
-      >{{ tab.label }}</button>
+      >
+        <span class="inline-flex items-center gap-2">
+          <component :is="tab.icon" class="h-4 w-4" />
+          {{ tab.label }}
+        </span>
+      </button>
     </div>
 
     <!-- TAB: Resumen trabajadores -->
@@ -37,7 +81,10 @@
               :key="t.id"
               class="border-b border-gray-50 hover:bg-gray-50 transition"
             >
-              <td class="px-4 py-3 font-medium text-gray-800">{{ t.nombre }}</td>
+              <td class="px-4 py-3">
+                <p class="font-medium text-gray-800">{{ t.nombre }}</p>
+                <p v-if="t.cargo" class="text-xs text-gray-500">{{ t.cargo }}</p>
+              </td>
               <td class="px-4 py-3 text-gray-500">{{ t.codigo }}</td>
               <td class="px-4 py-3 text-right" :class="(t.saldoTotal ?? 0) > 0 ? 'text-green-700 font-medium' : 'text-gray-500'">
                 {{ formatCurrency(t.saldoTotal ?? 0) }}
@@ -50,8 +97,14 @@
               </td>
               <td class="px-4 py-3 text-right">
                 <div class="flex justify-end gap-2">
-                  <button class="text-xs text-blue-600 hover:underline" @click="abrirPagarModal(t)">Pagar</button>
-                  <button class="text-xs text-purple-600 hover:underline" @click="abrirAnticipoModal(t)">Anticipo</button>
+                  <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="abrirPagarModal(t)">
+                    <HandCoins class="h-3.5 w-3.5" />
+                    Pagar
+                  </button>
+                  <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="abrirAnticipoModal(t)">
+                    <WalletCards class="h-3.5 w-3.5" />
+                    Anticipo
+                  </button>
                 </div>
               </td>
             </tr>
@@ -62,45 +115,59 @@
 
     <!-- TAB: Registrar labor -->
     <div v-if="tabActivo === 'labores'" class="space-y-4">
-      <div class="card space-y-4 max-w-lg">
-        <h2 class="font-semibold text-gray-700">Registrar labor</h2>
+      <div class="card space-y-4">
+        <div>
+          <h2 class="font-semibold text-gray-800">Registrar labor</h2>
+          <p class="text-sm text-gray-500">Carga unidades trabajadas y valor a pagar automaticamente.</p>
+        </div>
 
-        <FormField label="Trabajador *">
-          <select v-model="laborForm.trabajadorId" class="form-input" @change="fetchLaboresDisponibles">
-            <option :value="undefined">Seleccionar…</option>
-            <option v-for="t in trabajadores" :key="t.id" :value="t.id">{{ t.nombre }}</option>
-          </select>
-        </FormField>
-        <FormField label="Tipo de labor *">
-          <select v-model="laborForm.laborId" class="form-input">
-            <option :value="undefined">Seleccionar…</option>
-            <option v-for="l in laboresDisponibles" :key="l.id" :value="l.id">
-              {{ l.laborTipo?.nombre }} — {{ formatCurrency(Number(l.tarifa ?? 0)) }}/u
-            </option>
-          </select>
-        </FormField>
-        <FormField label="Cantidad">
-          <input v-model.number="laborForm.cantidad" class="form-input" type="number" min="1" />
-        </FormField>
-        <FormField label="Fecha">
-          <input v-model="laborForm.fecha" class="form-input" type="date" />
-        </FormField>
-        <FormField label="Notas">
-          <input v-model="laborForm.notas" class="form-input" />
-        </FormField>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-end">
+          <FormField label="Trabajador *">
+            <select v-model="laborForm.trabajadorId" class="form-input" @change="fetchLaboresDisponibles">
+              <option :value="undefined">Seleccionar…</option>
+              <option v-for="t in trabajadores" :key="t.id" :value="t.id">{{ t.nombre }}</option>
+            </select>
+          </FormField>
+          <FormField label="Tipo de labor *">
+            <select v-model.number="laborForm.laborTipoId" class="form-input" @change="onLaborTipoChange">
+              <option :value="undefined">Seleccionar…</option>
+              <option v-for="l in laborOpciones" :key="l.id" :value="l.id">
+                {{ l.nombre }} — {{ tipoPagoLabel(l.tipo) }}
+              </option>
+            </select>
+          </FormField>
+          <FormField :label="cantidadLabel">
+            <input v-model.number="laborForm.cantidad" class="form-input" type="number" min="1" step="0.01" />
+          </FormField>
+          <FormField :label="valorUnitarioLabel">
+            <input v-model.number="laborForm.valorUnitario" class="form-input" type="number" min="0" step="1" :placeholder="valorUnitarioPlaceholder" />
+          </FormField>
+          <FormField label="Fecha">
+            <input v-model="laborForm.fecha" class="form-input" type="date" />
+          </FormField>
+          <FormField label="Notas">
+            <input v-model="laborForm.notas" class="form-input" />
+          </FormField>
+        </div>
 
         <button
-          class="btn-primary"
-          :disabled="savingLabor || !laborForm.trabajadorId || !laborForm.laborId"
+          class="btn-primary inline-flex items-center gap-2"
+          :disabled="savingLabor || !laborForm.trabajadorId || !laborForm.laborTipoId || !laborForm.cantidad || !laborForm.valorUnitario"
           @click="registrarLabor"
-        >{{ savingLabor ? 'Guardando…' : 'Registrar labor' }}</button>
+        >
+          <ClipboardList class="h-4 w-4" />
+          {{ savingLabor ? 'Guardando…' : `Registrar ${formatCurrency(montoEstimado)}` }}
+        </button>
       </div>
 
       <!-- Labores del día -->
       <div class="card">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-sm text-gray-700">Labores de hoy</h3>
-          <button class="text-xs text-blue-600 hover:underline" @click="fetchLaboresHoy">Actualizar</button>
+        <button class="text-xs text-blue-600 hover:underline inline-flex items-center gap-1" @click="fetchLaboresHoy">
+          <RefreshCw class="h-3.5 w-3.5" />
+          Actualizar
+        </button>
         </div>
         <table class="w-full text-sm">
           <thead>
@@ -189,7 +256,7 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalPagar = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
         <h2 class="font-bold text-gray-800">Pagar a {{ trabSeleccionado?.nombre }}</h2>
         <p class="text-sm text-gray-500">Saldo: {{ formatCurrency(trabSeleccionado?.saldoTotal ?? 0) }}</p>
 
@@ -215,7 +282,7 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalAnticipo = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
         <h2 class="font-bold text-gray-800">Anticipo / Préstamo — {{ trabSeleccionado?.nombre }}</h2>
 
         <FormField label="Tipo">
@@ -246,7 +313,7 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalAbono = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
         <h2 class="font-bold text-gray-800">Abonar deuda</h2>
         <p class="text-sm text-gray-500">
           Saldo pendiente: {{ formatCurrency(anticipoSeleccionado?.saldoPendiente ?? anticipoSeleccionado?.saldo ?? 0) }}
@@ -271,6 +338,7 @@
 </template>
 
 <script setup lang="ts">
+import { ClipboardList, HandCoins, RefreshCw, UsersRound, WalletCards } from 'lucide-vue-next'
 import { formatCurrency, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
@@ -280,15 +348,16 @@ const notify = useNotification()
 const apiResponse = useApiResponse()
 
 const TABS = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'labores', label: 'Labores' },
-  { id: 'anticipos', label: 'Anticipos / Deudas' },
+  { id: 'resumen', label: 'Resumen', icon: UsersRound },
+  { id: 'labores', label: 'Labores', icon: ClipboardList },
+  { id: 'anticipos', label: 'Anticipos / Deudas', icon: WalletCards },
 ]
 const tabActivo = ref('resumen')
 
 const loadingTrab = ref(true)
 const trabajadores = ref<any[]>([])
 const laboresDisponibles = ref<any[]>([])
+const tiposLabor = ref<any[]>([])
 const laboresHoy = ref<any[]>([])
 const loadingAnt = ref(false)
 const anticipos = ref<any[]>([])
@@ -301,8 +370,9 @@ const anticipoSeleccionado = ref<any>(null)
 const savingLabor = ref(false)
 const laborForm = reactive({
   trabajadorId: undefined as number | undefined,
-  laborId: undefined as number | undefined,
+  laborTipoId: undefined as number | undefined,
   cantidad: 1,
+  valorUnitario: undefined as number | undefined,
   fecha: todayISO(),
   notas: '',
 })
@@ -322,6 +392,49 @@ const modalAbono = ref(false)
 const savingAbono = ref(false)
 const abonoForm = reactive({ monto: 0, notas: '' })
 
+const trabajadoresActivos = computed(() => trabajadores.value.filter((t) => t.activo).length)
+const saldoTotalTrabajadores = computed(() =>
+  trabajadores.value.reduce((sum, t) => sum + Number(t?.saldoTotal ?? 0), 0),
+)
+const laborOpciones = computed(() =>
+  tiposLabor.value.map((tipo: any) => {
+    const tarifa = laboresDisponibles.value.find((l: any) => l.laborTipoId === tipo.id || l.laborTipo?.id === tipo.id)
+    return {
+      ...tipo,
+      tarifaId: tarifa?.id,
+      tarifa: tarifa?.tarifa,
+    }
+  }),
+)
+const laborSeleccionada = computed(() =>
+  laborOpciones.value.find((l: any) => l.id === laborForm.laborTipoId),
+)
+const cantidadLabel = computed(() => {
+  if (laborSeleccionada.value?.tipo === 'POR_HORA') return 'Horas *'
+  if (laborSeleccionada.value?.tipo === 'POR_PACA') return 'Pacas *'
+  return 'Cantidad *'
+})
+const valorUnitarioLabel = computed(() => {
+  if (laborSeleccionada.value?.tipo === 'POR_HORA') return 'Valor por hora *'
+  if (laborSeleccionada.value?.tipo === 'POR_PACA') return 'Valor por paca *'
+  return 'Valor jornada *'
+})
+const valorUnitarioPlaceholder = computed(() => {
+  if (laborSeleccionada.value?.tipo === 'POR_HORA') return 'Ej: 8000'
+  if (laborSeleccionada.value?.tipo === 'POR_PACA') return 'Ej: 500'
+  return 'Ej: 42000'
+})
+const montoEstimado = computed(() =>
+  Number(laborForm.cantidad ?? 0) * Number(laborForm.valorUnitario ?? 0),
+)
+
+function tipoPagoLabel(tipo?: string) {
+  if (tipo === 'POR_HORA') return 'por hora'
+  if (tipo === 'POR_PACA') return 'por paca'
+  if (tipo === 'POR_JORNADA') return 'por jornada'
+  return 'manual'
+}
+
 async function fetchTrabajadores() {
   loadingTrab.value = true
   try {
@@ -335,16 +448,36 @@ async function fetchTrabajadores() {
   }
 }
 
+async function fetchTiposLabor() {
+  try {
+    const res = await api.get('/catalogos/labor-tipos', { params: { activo: 'true' } })
+    const d = apiResponse.unwrap(res) as any
+    tiposLabor.value = d.items ?? d
+  } catch {
+    tiposLabor.value = []
+    notify.error('Error al cargar tipos de labor')
+  }
+}
+
 async function fetchLaboresDisponibles() {
   if (!laborForm.trabajadorId) { laboresDisponibles.value = []; return }
   try {
     const res = await api.get(`/catalogos/trabajadores/${laborForm.trabajadorId}`)
     const d = apiResponse.unwrap(res) as any
     laboresDisponibles.value = d.laboresDisponibles ?? []
+    onLaborTipoChange()
   } catch {
     laboresDisponibles.value = []
     notify.error('Error al cargar labores disponibles')
   }
+}
+
+function onLaborTipoChange() {
+  const seleccionada = laborSeleccionada.value
+  laborForm.valorUnitario = seleccionada?.tarifa !== undefined && seleccionada?.tarifa !== null
+    ? Number(seleccionada.tarifa)
+    : undefined
+  if (seleccionada?.tipo === 'POR_JORNADA') laborForm.cantidad = 1
 }
 
 async function fetchLaboresHoy() {
@@ -387,21 +520,21 @@ async function fetchAnticipos() {
 async function registrarLabor() {
   savingLabor.value = true
   try {
-    const tarifa = laboresDisponibles.value.find((l: any) => l.id === laborForm.laborId)
     const cantidad = Number(laborForm.cantidad ?? 0)
-    const valorTarifa = Number(tarifa?.tarifa ?? 0)
 
     await api.post('/trabajadores-ops/labores', {
       trabajadorId: laborForm.trabajadorId,
-      laborTarifaId: laborForm.laborId,
+      laborTarifaId: laborSeleccionada.value?.tarifaId,
+      laborTipoId: laborForm.laborTipoId,
       fecha: laborForm.fecha,
       cantidadRealizado: cantidad,
-      montoAPagar: cantidad * valorTarifa,
+      valorUnitario: laborForm.valorUnitario,
       observaciones: laborForm.notas || undefined,
     })
     notify.success('Labor registrada')
-    laborForm.laborId = undefined
+    laborForm.laborTipoId = undefined
     laborForm.cantidad = 1
+    laborForm.valorUnitario = undefined
     laborForm.notas = ''
     await fetchLaboresHoy()
     await fetchTrabajadores()
@@ -500,6 +633,6 @@ watch(tabActivo, (t) => {
 })
 
 onMounted(async () => {
-  await fetchTrabajadores()
+  await Promise.all([fetchTrabajadores(), fetchTiposLabor(), fetchLaboresHoy()])
 })
 </script>

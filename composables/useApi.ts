@@ -10,13 +10,7 @@ export const useApi = () => {
   const api = axios.create({
     baseURL: config.public.apiBase,
     timeout: 15000,
-  })
-
-  api.interceptors.request.use((req) => {
-    if (authStore.token) {
-      req.headers.Authorization = `Bearer ${authStore.token}`
-    }
-    return req
+    withCredentials: true,
   })
 
   api.interceptors.response.use(
@@ -27,7 +21,7 @@ export const useApi = () => {
       if (status === 401) {
         notify.warning('Sesion expirada o invalida. Inicia sesion nuevamente.')
         authStore.logout()
-        navigateTo('/login')
+        navigateTo('/auth')
         return Promise.reject(error)
       }
 

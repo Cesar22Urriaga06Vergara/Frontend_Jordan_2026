@@ -12,10 +12,10 @@ import { useAuthStore } from '~/stores/auth'
 
 const authStore = useAuthStore()
 
-onMounted(() => {
-  authStore.logout()
+onMounted(async () => {
+  await authStore.logout()
   setTimeout(() => {
-    navigateTo('/login')
+    navigateTo('/auth')
   }, 500)
 })
 </script>

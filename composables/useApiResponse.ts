@@ -1,7 +1,11 @@
 const DEFAULT_ERROR_MESSAGE = 'Ocurrió un error inesperado'
 
-export const apiUnwrap = <T = any>(response: any): T =>
-  response?.data?.data ?? response?.data ?? response
+export const apiUnwrap = <T = any>(response: any): T => {
+  if (response?.data && Object.prototype.hasOwnProperty.call(response.data, 'data')) {
+    return response.data.data as T
+  }
+  return (response?.data ?? response) as T
+}
 
 export const apiList = <T = any>(response: any): T[] => {
   const payload = apiUnwrap(response) as any

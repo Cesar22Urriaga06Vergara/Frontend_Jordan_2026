@@ -30,13 +30,15 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://192.168.1.35:3002/api',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || (() => {
+        throw new Error('NUXT_PUBLIC_API_BASE no está configurado')
+      })(),
     },
   },
 
   devServer: {
-    port: parseInt(process.env.NITRO_PORT || '3003'),
-    host: '0.0.0.0',
+    port: parseInt(process.env.NITRO_PORT || '3001'),
+    host: 'localhost',
   },
 
   typescript: {

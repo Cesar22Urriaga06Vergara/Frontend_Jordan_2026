@@ -2,7 +2,10 @@
   <div class="space-y-6">
     <!-- Header con selector de fecha -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <h1 class="text-2xl font-bold text-gray-800">Flujo diario</h1>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Flujo diario</h1>
+        <p class="text-sm text-gray-500">Apertura, producción, cierre e historial operativo.</p>
+      </div>
       <div class="flex items-center gap-2">
         <label class="text-sm text-gray-600 whitespace-nowrap">Fecha:</label>
         <input
@@ -22,9 +25,12 @@
 
     <!-- Alerta día anterior sin cerrar -->
     <div v-if="diaPendiente && fechaSeleccionada === hoy" class="bg-red-50 border border-red-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-      <div class="flex-1">
-        <p class="text-sm font-semibold text-red-700">⚠️ Hay un día sin cerrar: {{ diaPendiente }}</p>
-        <p class="text-xs text-red-500 mt-0.5">Debes cerrarlo antes de poder abrir el día de hoy.</p>
+      <div class="flex-1 flex items-start gap-2">
+        <AlertTriangle class="h-5 w-5 text-red-700 mt-1" />
+        <div>
+          <p class="text-sm font-semibold text-red-700">Hay un día sin cerrar: {{ diaPendiente }}</p>
+          <p class="text-xs text-red-500 mt-0.5">Debes cerrarlo antes de poder abrir el día de hoy.</p>
+        </div>
       </div>
       <button
         class="btn-danger whitespace-nowrap text-sm"
@@ -34,10 +40,10 @@
 
     <div v-if="loadingEstado" class="card text-center text-gray-400 py-8">Cargando estado…</div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard label="Apertura" :value="estado.apertura ? 'Registrada' : 'Sin abrir'" icon="📅" color="blue" />
-      <StatCard label="Cierre" :value="estado.cierre ? 'Registrado' : 'Pendiente'" icon="✅" color="green" />
-      <StatCard label="Pedidos pendientes" :value="String(estado.pedidosPendientes ?? 0)" icon="📋" color="orange" />
-      <StatCard label="Rutas abiertas" :value="String(estado.rutasAbiertas ?? 0)" icon="🚚" color="red" />
+      <StatCard label="Apertura" :value="estado.apertura ? 'Registrada' : 'Sin abrir'" :icon="CalendarDays" color="blue" />
+      <StatCard label="Cierre" :value="estado.cierre ? 'Registrado' : 'Pendiente'" :icon="CheckCircle" color="green" />
+      <StatCard label="Pedidos pendientes" :value="String(estado.pedidosPendientes ?? 0)" :icon="ClipboardList" color="orange" />
+      <StatCard label="Rutas abiertas" :value="String(estado.rutasAbiertas ?? 0)" :icon="Truck" color="red" />
     </div>
 
     <div class="card space-y-4">
@@ -48,11 +54,19 @@
         </span>
       </div>
 
-      <div v-if="!estado.apertura || (estado.cierre && reopening)">
-        <div class="mb-3">
+      <div v-if="!estado.apertura || (estado.cierre && reopening)" class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
+        <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-sm font-medium text-gray-600">Inventario inicial</span>
-            <button class="text-xs text-blue-600 hover:underline" @click="agregarInventario">+ Añadir producto</button>
+            <button class="btn-secondary text-xs py-1.5 px-2 inline-flex items-center gap-1" @click="agregarInventario">
+              <Plus class="h-4 w-4" />
+              Añadir producto
+            </button>
+          </div>
+          <div v-if="!aperturaInventario.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 text-center py-7 px-4 mb-3">
+            <ClipboardList class="h-8 w-8 text-gray-300 mx-auto mb-2" />
+            <p class="font-medium text-gray-700">Sin productos iniciales</p>
+            <p class="text-sm text-gray-500 mt-1">Agrega solo los productos con inventario al iniciar el día.</p>
           </div>
           <div v-for="(item, i) in aperturaInventario" :key="i" class="flex gap-2 mb-2">
             <select v-model="item.productoId" class="form-input flex-1">
@@ -64,13 +78,16 @@
           </div>
         </div>
 
-        <FormField label="Saldo inicial ($)">
-          <input v-model.number="aperturaSaldoInicial" class="form-input max-w-xs" type="number" min="0" />
-        </FormField>
-
-        <button class="btn-primary mt-3" :disabled="savingApertura" @click="abrirDia">
-          {{ savingApertura ? 'Abriendo…' : 'Abrir día' }}
-        </button>
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-4 space-y-3">
+          <FormField label="Saldo inicial ($)">
+            <input v-model.number="aperturaSaldoInicial" class="form-input" type="number" min="0" />
+          </FormField>
+          <button class="btn-primary w-full inline-flex items-center justify-center gap-2" :disabled="savingApertura" @click="abrirDia">
+            <CalendarDays class="h-4 w-4" />
+            {{ savingApertura ? 'Abriendo…' : 'Abrir día' }}
+          </button>
+          <p class="text-xs text-gray-500">Al abrir el día se habilitan producción, rutas, ventas y cierre.</p>
+        </div>
       </div>
 
       <div v-else class="text-sm text-gray-500">
@@ -94,13 +111,23 @@
     </div>
 
     <div v-if="estado.apertura" class="card space-y-4">
-      <h2 class="font-semibold text-gray-700">Registrar producción</h2>
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-gray-800">Registrar producción</h2>
+          <p class="text-sm text-gray-500">Agrega los productos fabricados antes de cerrar la jornada.</p>
+        </div>
+        <button v-if="!estado.cierre" class="btn-secondary text-xs py-1.5 px-2 inline-flex items-center gap-1" @click="agregarProduccion">
+          <Plus class="h-4 w-4" />
+          Añadir
+        </button>
+      </div>
 
       <div v-if="!estado.cierre">
         <div class="mb-3">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-600">Productos producidos hoy</span>
-            <button class="text-xs text-blue-600 hover:underline" @click="agregarProduccion">+ Añadir</button>
+          <div v-if="!produccionItems.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 text-center py-7 px-4 mb-3">
+            <ClipboardList class="h-8 w-8 text-gray-300 mx-auto mb-2" />
+            <p class="font-medium text-gray-700">Aún no has agregado producción</p>
+            <p class="text-sm text-gray-500 mt-1">Usa Añadir para cargar producto y cantidad producida.</p>
           </div>
           <div v-for="(item, i) in produccionItems" :key="i" class="flex gap-2 mb-2">
             <select v-model="item.productoId" class="form-input flex-1">
@@ -112,7 +139,8 @@
           </div>
         </div>
 
-        <button class="btn-primary" :disabled="savingProduccion || !produccionItems.some(i => i.productoId && i.cantidad > 0)" @click="registrarProduccion">
+        <button class="btn-primary inline-flex items-center gap-2" :disabled="savingProduccion || !produccionItems.some(i => i.productoId && i.cantidad > 0)" @click="registrarProduccion">
+          <ClipboardList class="h-4 w-4" />
           {{ savingProduccion ? 'Guardando…' : 'Guardar producción' }}
         </button>
       </div>
@@ -121,7 +149,10 @@
     </div>
 
     <div v-if="estado.apertura && !estado.cierre" class="card space-y-4">
-      <h2 class="font-semibold text-gray-700">Cerrar día</h2>
+      <div>
+        <h2 class="font-semibold text-gray-800">Cerrar día</h2>
+        <p class="text-sm text-gray-500">Verifica caja e inventario final antes de bloquear operaciones.</p>
+      </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Saldo contado en caja ($)">
@@ -162,7 +193,10 @@
     <div class="card">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-semibold text-gray-700">Historial</h2>
-        <button class="text-xs text-blue-600 hover:underline" @click="fetchHistorial">Actualizar</button>
+        <button class="text-xs text-blue-600 hover:underline inline-flex items-center gap-1" @click="fetchHistorial">
+          <RefreshCw class="h-3.5 w-3.5" />
+          Actualizar
+        </button>
       </div>
 
       <table class="w-full text-sm">
@@ -191,6 +225,7 @@
 </template>
 
 <script setup lang="ts">
+import { AlertTriangle, CalendarDays, CheckCircle, ClipboardList, Plus, RefreshCw, Truck } from 'lucide-vue-next'
 import { formatCurrency, formatDate, formatDateTime, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
@@ -198,9 +233,11 @@ definePageMeta({ middleware: 'auth' })
 const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
+const route = useRoute()
+const router = useRouter()
 
 const hoy = todayISO()
-const fechaSeleccionada = ref(hoy)
+const fechaSeleccionada = ref(typeof route.query.fecha === 'string' ? route.query.fecha : hoy)
 const loadingEstado = ref(true)
 const savingApertura = ref(false)
 const savingProduccion = ref(false)
@@ -234,6 +271,7 @@ function syncCierreInventario() {
 
 function onFechaChange() {
   reopening.value = false
+  router.replace({ path: '/operaciones/diario', query: { fecha: fechaSeleccionada.value } })
   fetchEstado()
 }
 
@@ -246,10 +284,27 @@ function irACerrarDiaPendiente() {
 
 async function fetchEstado() {
   loadingEstado.value = true
-  diaPendiente.value = null
   try {
-    const res = await api.get('/diario/estado', { params: { fecha: fechaSeleccionada.value } })
-    estado.value = apiResponse.unwrap(res)
+    const [estadoRes, diaPendienteRes] = await Promise.allSettled([
+      api.get('/diario/estado', { params: { fecha: fechaSeleccionada.value } }),
+      api.get('/diario/dia-abierto-pendiente'),
+    ])
+
+    if (estadoRes.status === 'fulfilled') {
+      estado.value = apiResponse.unwrap(estadoRes.value)
+    } else {
+      throw estadoRes.reason
+    }
+
+    if (diaPendienteRes.status === 'fulfilled') {
+      const pendiente = apiResponse.unwrap(diaPendienteRes.value) as any
+      diaPendiente.value = pendiente?.fecha && pendiente.fecha !== fechaSeleccionada.value
+        ? pendiente.fecha
+        : null
+    } else {
+      diaPendiente.value = null
+    }
+
     syncCierreInventario()
   } catch (e: any) {
     // Detectar 409: día anterior sin cerrar
@@ -367,4 +422,14 @@ async function cerrarDia() {
 onMounted(async () => {
   await Promise.all([fetchEstado(), fetchHistorial(), fetchProductos()])
 })
+
+watch(
+  () => route.query.fecha,
+  (fecha) => {
+    if (typeof fecha === 'string' && fecha !== fechaSeleccionada.value) {
+      fechaSeleccionada.value = fecha
+      onFechaChange()
+    }
+  },
+)
 </script>
