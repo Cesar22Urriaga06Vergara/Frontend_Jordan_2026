@@ -82,7 +82,6 @@
                   {{ printingId === p.id ? '...' : 'Imprimir' }}
                 </button>
                 <button
-                  v-if="puedeEliminarPedido(p)"
                   class="flex items-center gap-1 text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40"
                   :disabled="deletingId === p.id"
                   @click="confirmarEliminarPedido(p)"
@@ -187,11 +186,6 @@ async function imprimir(p: any) {
 
 function verDetalle(p: any) {
   navigateTo(`/pedidos/${p.id}`)
-}
-
-function puedeEliminarPedido(p: any) {
-  const tieneVentas = Array.isArray(p?.ventas) && p.ventas.length > 0
-  return ['PENDIENTE', 'CARGADO_EN_RUTA', 'CANCELADO'].includes(p?.estado) && !tieneVentas
 }
 
 function confirmarEliminarPedido(p: any) {

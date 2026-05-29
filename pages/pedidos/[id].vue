@@ -25,7 +25,6 @@
             <Printer :size="15" /> Imprimir ticket
           </button>
           <button
-            v-if="puedeEliminarPedido"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm font-medium transition-colors disabled:opacity-40"
             :disabled="deleting"
             @click="modalEliminarPedido?.open()"
@@ -220,11 +219,6 @@ const totalPedido = computed(() => {
     if (subtotal > 0) return acc + subtotal
     return acc + Number(d?.cantidad ?? 0) * Number(d?.precioUnitario ?? 0)
   }, 0)
-})
-
-const puedeEliminarPedido = computed(() => {
-  const tieneVentas = Array.isArray(pedido.value?.ventas) && pedido.value.ventas.length > 0
-  return ['PENDIENTE', 'CARGADO_EN_RUTA', 'CANCELADO'].includes(pedido.value?.estado) && !tieneVentas
 })
 
 async function fetchPedido() {

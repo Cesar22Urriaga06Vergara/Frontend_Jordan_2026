@@ -19,7 +19,7 @@
         </p>
       </div>
       <button
-        v-if="ruta && puedeEliminarRuta"
+        v-if="ruta"
         type="button"
         class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
         :disabled="deleting"
@@ -246,10 +246,6 @@ const deleting = ref(false)
 
 const puedeEditarPedidos = computed(() =>
   ['CREADA', 'CARGADA'].includes(ruta.value?.estado ?? ''),
-)
-
-const puedeEliminarRuta = computed(() =>
-  ['CREADA', 'CARGADA', 'ANULADA'].includes(ruta.value?.estado ?? ''),
 )
 
 const acciones = computed(() => {

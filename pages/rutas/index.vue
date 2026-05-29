@@ -92,7 +92,6 @@
                   <ArrowRight :size="14" /> Gestionar
                 </button>
                 <button
-                  v-if="puedeEliminarRuta(r)"
                   type="button"
                   class="text-xs py-1 px-2 inline-flex items-center gap-1 rounded border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-40"
                   :disabled="deletingId === r.id"
@@ -242,10 +241,6 @@ function abrirModal() {
   form.observaciones = ''
   fetchTrabajadores()
   modalForm.value = true
-}
-
-function puedeEliminarRuta(r: any) {
-  return ['CREADA', 'CARGADA', 'ANULADA'].includes(r?.estado)
 }
 
 function confirmarEliminarRuta(r: any) {
