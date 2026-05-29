@@ -81,6 +81,15 @@
                   <Printer :size="12" />
                   {{ printingId === p.id ? '...' : 'Imprimir' }}
                 </button>
+                <button
+                  v-if="puedeEliminarPedido(p)"
+                  class="flex items-center gap-1 text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-40"
+                  :disabled="deletingId === p.id"
+                  @click="confirmarEliminarPedido(p)"
+                >
+                  <Trash2 :size="12" />
+                  Eliminar
+                </button>
               </div>
             </td>
           </tr>
@@ -97,12 +106,23 @@
       </div>
     </div>
 
+    <ModalConfirmacion
+      ref="modalEliminarPedido"
+      titulo="Eliminar pedido"
+      descripcion="El pedido se eliminara definitivamente si aun no tiene venta ni historial operativo."
+      textoConfirm="Eliminar"
+      textoCancel="Cancelar"
+      :detalles="{ Pedido: pedidoAEliminar?.numero, Cliente: pedidoAEliminar?.cliente?.nombre }"
+      advertencia="Para pedidos ya entregados o facturados usa cancelar/anular segun corresponda."
+      @confirm="eliminarPedido"
+      @cancel="cerrarEliminarPedido"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatDate } from '~/utils/formats'
-import { Plus, Printer } from 'lucide-vue-next'
+import { Plus, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -112,6 +132,9 @@ const apiResponse = useApiResponse()
 const { imprimirPedido } = usePrintTicket()
 
 const printingId = ref<number | null>(null)
+const deletingId = ref<number | null>(null)
+const pedidoAEliminar = ref<any>(null)
+const modalEliminarPedido = ref()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -164,6 +187,36 @@ async function imprimir(p: any) {
 
 function verDetalle(p: any) {
   navigateTo(`/pedidos/${p.id}`)
+}
+
+function puedeEliminarPedido(p: any) {
+  const tieneVentas = Array.isArray(p?.ventas) && p.ventas.length > 0
+  return ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(p?.estado) && !tieneVentas
+}
+
+function confirmarEliminarPedido(p: any) {
+  pedidoAEliminar.value = p
+  modalEliminarPedido.value?.open()
+}
+
+function cerrarEliminarPedido() {
+  pedidoAEliminar.value = null
+  modalEliminarPedido.value?.close()
+}
+
+async function eliminarPedido() {
+  if (!pedidoAEliminar.value) return
+  deletingId.value = pedidoAEliminar.value.id
+  try {
+    await api.delete(`/operaciones/pedidos/${pedidoAEliminar.value.id}`)
+    success(`Pedido ${pedidoAEliminar.value.numero} eliminado`)
+    await loadPedidos()
+  } catch (e: any) {
+    error(e?.response?.data?.message || 'No se pudo eliminar el pedido')
+  } finally {
+    deletingId.value = null
+    cerrarEliminarPedido()
+  }
 }
 
 function changePage(delta: number) {

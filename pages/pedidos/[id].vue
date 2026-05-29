@@ -24,6 +24,14 @@
           >
             <Printer :size="15" /> Imprimir ticket
           </button>
+          <button
+            v-if="puedeEliminarPedido"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm font-medium transition-colors disabled:opacity-40"
+            :disabled="deleting"
+            @click="modalEliminarPedido?.open()"
+          >
+            <Trash2 :size="15" /> Eliminar
+          </button>
           <EstadoBadge :estado="pedido.estado" />
         </div>
       </div>
@@ -143,12 +151,24 @@
       @confirm="procederCancelar"
       @cancel="modalCancelConfirm?.close()"
     />
+
+    <ModalConfirmacion
+      ref="modalEliminarPedido"
+      titulo="Eliminar pedido"
+      descripcion="El pedido se eliminara definitivamente si aun no tiene venta ni historial operativo."
+      textoConfirm="Eliminar"
+      textoCancel="Cancelar"
+      :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
+      advertencia="Para pedidos ya entregados o facturados usa cancelar/anular segun corresponda."
+      @confirm="eliminarPedido"
+      @cancel="modalEliminarPedido?.close()"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatCurrency, formatDate } from '~/utils/formats'
-import { X, Printer } from 'lucide-vue-next'
+import { Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -166,6 +186,8 @@ const estadoDestino = ref('')
 const estadoNotas = ref('')
 const motivoNoEntrega = ref('')
 const modalCancelConfirm = ref()
+const modalEliminarPedido = ref()
+const deleting = ref(false)
 
 const TRANSICIONES: Record<string, { valor: string; label: string; color?: string }[]> = {
   PENDIENTE: [
@@ -198,6 +220,11 @@ const totalPedido = computed(() => {
     if (subtotal > 0) return acc + subtotal
     return acc + Number(d?.cantidad ?? 0) * Number(d?.precioUnitario ?? 0)
   }, 0)
+})
+
+const puedeEliminarPedido = computed(() => {
+  const tieneVentas = Array.isArray(pedido.value?.ventas) && pedido.value.ventas.length > 0
+  return ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(pedido.value?.estado) && !tieneVentas
 })
 
 async function fetchPedido() {
@@ -267,6 +294,22 @@ async function confirmarCambioEstado() {
     notify.error(e?.response?.data?.message ?? 'Error al cambiar estado')
   } finally {
     saving.value = false
+  }
+}
+
+async function eliminarPedido() {
+  if (!pedido.value) return
+  deleting.value = true
+  try {
+    await api.delete(`/operaciones/pedidos/${pedido.value.id}`)
+    notify.success(`Pedido ${pedido.value.numero} eliminado`)
+    modalEliminarPedido.value?.close()
+    await navigateTo('/pedidos')
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'No se pudo eliminar el pedido')
+    modalEliminarPedido.value?.close()
+  } finally {
+    deleting.value = false
   }
 }
 

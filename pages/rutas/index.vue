@@ -91,6 +91,15 @@
                 >
                   <ArrowRight :size="14" /> Gestionar
                 </button>
+                <button
+                  v-if="puedeEliminarRuta(r)"
+                  type="button"
+                  class="text-xs py-1 px-2 inline-flex items-center gap-1 rounded border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-40"
+                  :disabled="deletingId === r.id"
+                  @click="confirmarEliminarRuta(r)"
+                >
+                  <Trash2 :size="14" /> Eliminar
+                </button>
               </div>
             </td>
           </tr>
@@ -142,12 +151,24 @@
         </div>
       </div>
     </div>
+
+    <ModalConfirmacion
+      ref="modalEliminarRuta"
+      titulo="Eliminar ruta"
+      descripcion="La ruta se eliminara y sus pedidos volveran a pendiente si aun no tiene historial operativo."
+      textoConfirm="Eliminar"
+      textoCancel="Cancelar"
+      :detalles="{ Ruta: rutaAEliminar?.numero, Trabajador: rutaAEliminar?.domiciliario?.nombre }"
+      advertencia="Para rutas en entrega, liquidacion o liquidadas usa anular/cerrar segun corresponda."
+      @confirm="eliminarRuta"
+      @cancel="cerrarEliminarRuta"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatDate, todayISO } from '~/utils/formats'
-import { ArrowRight, CheckCircle, ClipboardList, Plus, RefreshCw, Truck } from 'lucide-vue-next'
+import { ArrowRight, CheckCircle, ClipboardList, Plus, RefreshCw, Trash2, Truck } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -159,6 +180,7 @@ const ESTADOS = ['CREADA', 'CARGADA', 'EN_ENTREGA', 'EN_LIQUIDACION', 'LIQUIDADA
 
 const loading = ref(true)
 const saving = ref(false)
+const deletingId = ref<number | null>(null)
 const rutas = ref<any[]>([])
 const total = ref(0)
 const pagina = ref(1)
@@ -167,6 +189,8 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / LIMITE))
 const filtroEstado = ref('')
 
 const modalForm = ref(false)
+const modalEliminarRuta = ref()
+const rutaAEliminar = ref<any>(null)
 const form = reactive({ fecha: todayISO(), domiciliarioId: undefined as number | undefined, observaciones: '' })
 const errors = reactive({ fecha: '', domiciliarioId: '' })
 const trabajadores = ref<any[]>([])
@@ -218,6 +242,35 @@ function abrirModal() {
   form.observaciones = ''
   fetchTrabajadores()
   modalForm.value = true
+}
+
+function puedeEliminarRuta(r: any) {
+  return ['CREADA', 'CARGADA'].includes(r?.estado)
+}
+
+function confirmarEliminarRuta(r: any) {
+  rutaAEliminar.value = r
+  modalEliminarRuta.value?.open()
+}
+
+function cerrarEliminarRuta() {
+  rutaAEliminar.value = null
+  modalEliminarRuta.value?.close()
+}
+
+async function eliminarRuta() {
+  if (!rutaAEliminar.value) return
+  deletingId.value = rutaAEliminar.value.id
+  try {
+    await api.delete(`/operaciones/rutas/${rutaAEliminar.value.id}`)
+    notify.success(`Ruta ${rutaAEliminar.value.numero} eliminada`)
+    await fetchRutas()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'No se pudo eliminar la ruta')
+  } finally {
+    deletingId.value = null
+    cerrarEliminarRuta()
+  }
 }
 
 async function crearRuta() {

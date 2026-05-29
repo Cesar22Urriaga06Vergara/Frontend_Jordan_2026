@@ -18,6 +18,15 @@
           <span v-if="ruta.domiciliario?.nombre"> · {{ ruta.domiciliario.nombre }}</span>
         </p>
       </div>
+      <button
+        v-if="ruta && puedeEliminarRuta"
+        type="button"
+        class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
+        :disabled="deleting"
+        @click="modalEliminarRuta?.open()"
+      >
+        <Trash2 :size="16" /> Eliminar ruta
+      </button>
     </div>
 
     <div v-if="loading" class="card py-12 text-center text-gray-400">Cargando ruta…</div>
@@ -150,6 +159,18 @@
       @confirm="procederAnular"
       @cancel="modalAnulaConfirm?.close()"
     />
+
+    <ModalConfirmacion
+      ref="modalEliminarRuta"
+      titulo="Eliminar ruta"
+      descripcion="La ruta se eliminara y sus pedidos volveran a pendiente si aun no tiene historial operativo."
+      textoConfirm="Eliminar"
+      textoCancel="Cancelar"
+      :detalles="{ Ruta: ruta?.numero, Trabajador: ruta?.domiciliario?.nombre }"
+      advertencia="Para rutas en entrega, liquidacion o liquidadas usa anular/cerrar segun corresponda."
+      @confirm="eliminarRuta"
+      @cancel="modalEliminarRuta?.close()"
+    />
   </div>
 </template>
 
@@ -160,6 +181,7 @@ import {
   Ban,
   ClipboardList,
   PackageCheck,
+  Trash2,
   Truck,
 } from 'lucide-vue-next'
 definePageMeta({ middleware: 'auth' })
@@ -218,9 +240,15 @@ const agregandoPedidos = ref(false)
 const pedidosPendientes = ref<any[]>([])
 const loadingPendientes = ref(false)
 const modalAnulaConfirm = ref()
+const modalEliminarRuta = ref()
 const navegandoLiquidacion = ref(false)
+const deleting = ref(false)
 
 const puedeEditarPedidos = computed(() =>
+  ['CREADA', 'CARGADA'].includes(ruta.value?.estado ?? ''),
+)
+
+const puedeEliminarRuta = computed(() =>
   ['CREADA', 'CARGADA'].includes(ruta.value?.estado ?? ''),
 )
 
@@ -327,6 +355,22 @@ async function abrirLiquidacion() {
   if (!ruta.value || navegandoLiquidacion.value) return
   navegandoLiquidacion.value = true
   await router.push(`/rutas/${ruta.value.id}/liquidacion`)
+}
+
+async function eliminarRuta() {
+  if (!ruta.value) return
+  deleting.value = true
+  try {
+    await api.delete(`/operaciones/rutas/${ruta.value.id}`)
+    notify.success(`Ruta ${ruta.value.numero} eliminada`)
+    modalEliminarRuta.value?.close()
+    await router.push('/rutas')
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'No se pudo eliminar la ruta')
+    modalEliminarRuta.value?.close()
+  } finally {
+    deleting.value = false
+  }
 }
 
 onMounted(fetchRuta)
