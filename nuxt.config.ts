@@ -74,6 +74,12 @@ export default defineNuxtConfig({
     },
   },
 
+  routeRules: {
+    '/api/**': {
+      proxy: 'https://backend-jordan-2026.onrender.com/api/**',
+    },
+  },
+
   vite: {
     define: {
       '__VITE_BUILD__': 'false',
