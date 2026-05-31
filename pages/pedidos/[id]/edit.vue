@@ -13,12 +13,20 @@
     </div>
 
     <div v-else class="card space-y-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <FormField label="Cliente *" :error="errors.clienteId">
           <select v-model="form.clienteId" class="form-input">
             <option :value="undefined">Seleccionar…</option>
             <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
               {{ cliente.nombre }}
+            </option>
+          </select>
+        </FormField>
+        <FormField label="Trabajador *" :error="errors.trabajadorId">
+          <select v-model="form.trabajadorId" class="form-input">
+            <option :value="undefined">Seleccionar...</option>
+            <option v-for="trabajador in trabajadores" :key="trabajador.id" :value="trabajador.id">
+              {{ trabajador.nombre }}
             </option>
           </select>
         </FormField>
@@ -101,13 +109,15 @@ const loading = ref(true)
 const saving = ref(false)
 const clientes = ref<any[]>([])
 const productos = ref<any[]>([])
+const trabajadores = ref<any[]>([])
 const form = reactive({
   clienteId: undefined as number | undefined,
+  trabajadorId: undefined as number | undefined,
   fecha: todayISO(),
   detalles: [] as Array<{ productoId: number | undefined; cantidad: number; precioUnitario: number }>,
   observaciones: '',
 })
-const errors = reactive({ clienteId: '', fecha: '', detalles: [] as Array<{ productoId: string; cantidad: string; precioUnitario: string }> })
+const errors = reactive({ clienteId: '', trabajadorId: '', fecha: '', detalles: [] as Array<{ productoId: string; cantidad: string; precioUnitario: string }> })
 
 const totalPedido = computed(() => {
   return form.detalles.reduce((total, detalle) => {
@@ -119,23 +129,26 @@ const totalPedido = computed(() => {
 
 function validarForm() {
   errors.clienteId = form.clienteId ? '' : 'El cliente es requerido'
+  errors.trabajadorId = form.trabajadorId ? '' : 'El trabajador es requerido'
   errors.fecha = form.fecha ? '' : 'La fecha es requerida'
   errors.detalles = form.detalles.map((detalle) => ({
     productoId: detalle.productoId ? '' : 'El producto es requerido',
     cantidad: detalle.cantidad > 0 ? '' : 'La cantidad debe ser mayor a 0',
     precioUnitario: detalle.precioUnitario > 0 ? '' : 'El precio debe ser mayor a 0',
   }))
-  return !errors.clienteId && !errors.fecha && errors.detalles.every((d) => !d.productoId && !d.cantidad && !d.precioUnitario)
+  return !errors.clienteId && !errors.trabajadorId && !errors.fecha && errors.detalles.every((d) => !d.productoId && !d.cantidad && !d.precioUnitario)
 }
 
 async function loadCatalogos() {
   try {
-    const [clientesRes, productosRes] = await Promise.all([
+    const [clientesRes, productosRes, trabajadoresRes] = await Promise.all([
       api.get('/catalogos/clientes?activo=true&limit=200'),
       api.get('/catalogos/productos?activo=true&limit=200'),
+      api.get('/catalogos/trabajadores?activo=true&limit=200'),
     ])
     clientes.value = apiResponse.list(clientesRes)
     productos.value = apiResponse.list(productosRes)
+    trabajadores.value = apiResponse.list(trabajadoresRes)
   } catch {
     error('No se pudieron cargar los catálogos')
   }
@@ -147,6 +160,7 @@ async function fetchPedido() {
     const res = await api.get(`/operaciones/pedidos/${route.params.id}`)
     const pedido = apiResponse.unwrap(res) as any
     form.clienteId = pedido.clienteId
+    form.trabajadorId = pedido.trabajadorId
     form.fecha = pedido.fecha?.split('T')[0] ?? todayISO()
     form.observaciones = pedido.observaciones ?? ''
     form.detalles = (pedido.detalles ?? []).map((detalle: any) => ({
@@ -170,6 +184,7 @@ async function actualizarPedido() {
   saving.value = true
   try {
     await api.patch(`/operaciones/pedidos/${route.params.id}`, {
+      trabajadorId: form.trabajadorId,
       fecha: form.fecha,
       detalles: form.detalles.filter((d) => d.productoId && d.cantidad > 0 && d.precioUnitario > 0),
       observaciones: form.observaciones || undefined,

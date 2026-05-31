@@ -66,6 +66,45 @@
       <StatCard label="Resultado caja" :value="formatCurrency(kpi.resultadoCaja)" :icon="Scale" color="blue" :loading="loading" />
     </div>
 
+    <!-- Pedidos por trabajador -->
+    <div class="card">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="font-semibold text-gray-700">Pedidos y pacas por trabajador</h2>
+          <p class="text-xs text-gray-500">Agrupa los pedidos del periodo por el trabajador asociado al momento de crear el pedido.</p>
+        </div>
+        <span class="text-sm font-semibold text-blue-700">
+          {{ pedidosRaw.length }} pedidos
+        </span>
+      </div>
+      <div v-if="loading" class="text-gray-400 text-sm text-center py-4">Cargando...</div>
+      <table v-else class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b text-xs uppercase">
+            <th class="pb-2 font-medium">Trabajador</th>
+            <th class="pb-2 font-medium text-center">Pedidos</th>
+            <th class="pb-2 font-medium text-center">Entregados</th>
+            <th class="pb-2 font-medium text-center">Pacas</th>
+            <th class="pb-2 font-medium">Productos vendidos</th>
+            <th class="pb-2 font-medium text-right">Total pedidos</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="t in resumenPedidosTrabajadores()" :key="t.trabajador" class="border-b border-gray-50">
+            <td class="py-2 font-medium text-gray-800">{{ t.trabajador }}</td>
+            <td class="py-2 text-center text-gray-600">{{ t.pedidos }}</td>
+            <td class="py-2 text-center text-gray-600">{{ t.entregados }}</td>
+            <td class="py-2 text-center font-semibold text-blue-700">{{ t.pacas }}</td>
+            <td class="py-2 text-gray-500">{{ t.productosDetalle }}</td>
+            <td class="py-2 text-right font-semibold">{{ formatCurrency(t.total) }}</td>
+          </tr>
+          <tr v-if="!resumenPedidosTrabajadores().length">
+            <td colspan="6" class="py-4 text-center text-gray-400">Sin pedidos asociados a trabajadores</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- Caja y egresos -->
     <div class="card">
       <div class="flex items-center justify-between gap-3 mb-4">
@@ -654,6 +693,70 @@ function resumenProductos() {
   return Object.values(map).sort((a: any, b: any) => Number(b.total) - Number(a.total))
 }
 
+function trabajadorPedido(pedido: any) {
+  const id = String(pedido.trabajadorId ?? pedido.trabajador?.id ?? '0')
+  return {
+    id,
+    nombre: pedido.trabajador?.nombre ?? (id === '0' ? 'Sin trabajador asignado' : `Trabajador ${id}`),
+  }
+}
+
+function productoEsPaca(detalle: any) {
+  const producto = detalle.producto ?? {}
+  const texto = `${producto.nombre ?? ''} ${producto.codigo ?? ''} ${producto.categoria ?? ''}`.toUpperCase()
+  return texto.includes('PACA')
+}
+
+function resumenPedidosTrabajadores() {
+  const map: Record<string, any> = {}
+
+  for (const pedido of pedidosRaw.value) {
+    const trabajador = trabajadorPedido(pedido)
+    if (!map[trabajador.id]) {
+      map[trabajador.id] = {
+        trabajador: trabajador.nombre,
+        pedidos: 0,
+        entregados: 0,
+        pacas: 0,
+        total: 0,
+        productos: new Map<string, number>(),
+      }
+    }
+
+    const item = map[trabajador.id]
+    item.pedidos += 1
+    item.entregados += pedido.estado === 'ENTREGADO' ? 1 : 0
+    item.total += totalPedido(pedido)
+
+    for (const detalle of pedido.detalles ?? []) {
+      const cantidad = Number(detalle.cantidad ?? 0)
+      const producto = detalle.producto?.nombre ?? `Producto ${detalle.productoId ?? ''}`
+      item.productos.set(producto, (item.productos.get(producto) ?? 0) + cantidad)
+      if (productoEsPaca(detalle)) item.pacas += cantidad
+    }
+  }
+
+  return Object.values(map)
+    .map((item: any) => ({
+      ...item,
+      productosDetalle: [...item.productos.entries()]
+        .map(([producto, cantidad]) => `${producto}: ${cantidadLabel(cantidad)}`)
+        .join('; ') || emptyLabel,
+    }))
+    .sort((a: any, b: any) => Number(b.total) - Number(a.total))
+}
+
+function pedidosTrabajadorProductoRows() {
+  return resumenPedidosTrabajadores().map((item: any) => [
+    item.trabajador,
+    item.pedidos,
+    item.entregados,
+    item.pacas,
+    item.productosDetalle,
+    Number(item.total ?? 0),
+  ])
+}
+
 function uniqueById(items: any[]) {
   const map = new Map<string, any>()
   for (const item of items) {
@@ -964,6 +1067,7 @@ function exportExcelEmpresarial() {
         formatDate(p.fecha),
         p.numero,
         p.cliente?.nombre ?? emptyLabel,
+        trabajadorPedido(p).nombre,
         p.estado,
         numeroFactura(p),
         estadoFactura(p),
@@ -980,6 +1084,7 @@ function exportExcelEmpresarial() {
       formatDate(p.fecha),
       p.numero,
       p.cliente?.nombre ?? emptyLabel,
+      trabajadorPedido(p).nombre,
       p.estado,
       numeroFactura(p),
       estadoFactura(p),
@@ -996,7 +1101,7 @@ function exportExcelEmpresarial() {
   const pedidosPorDia = resumenPorFecha()
     .map((dia: any) => {
       const rows = pedidoRows.filter(row => row[0] === dia.fecha)
-      return htmlTable(`Pedidos del ${dia.fecha}`, ['Fecha', 'Pedido', 'Cliente', 'Estado pedido', 'Factura', 'Estado factura', 'Saldo factura', 'Producto', 'Cant.', 'Precio unit.', 'Subtotal', 'Total pedido', 'Observaciones'], rows, reportColors.orange, [6, 9, 10, 11], 'Detalle operativo de los pedidos registrados en esa fecha.')
+      return htmlTable(`Pedidos del ${dia.fecha}`, ['Fecha', 'Pedido', 'Cliente', 'Trabajador', 'Estado pedido', 'Factura', 'Estado factura', 'Saldo factura', 'Producto', 'Cant.', 'Precio unit.', 'Subtotal', 'Total pedido', 'Observaciones'], rows, reportColors.orange, [7, 10, 11, 12], 'Detalle operativo de los pedidos registrados en esa fecha.')
     })
     .join('')
 
@@ -1057,13 +1162,14 @@ function exportExcelEmpresarial() {
         ${htmlTable('Resumen consolidado por fecha', ['Fecha', 'Pedidos', 'Entregados', 'Pendientes', 'Total pedidos', 'Ventas facturadas', 'Cobrado real'], resumenPorFecha().map((d: any) => [d.fecha, d.pedidos, d.entregados, d.pendientes, d.totalPedidos, d.ventas, d.cobrado]), reportColors.blue, [4, 5, 6], 'Consolida la operacion diaria separando pedidos, facturacion y pagos reales.')}
         ${htmlTable('Trazabilidad de facturas y cobros', ['Fecha movimiento', 'Movimiento', 'Cliente', 'Factura', 'Fecha factura', 'Estado factura', 'Total factura', 'Valor cobrado', 'Saldo actual', 'Interpretacion'], facturasMovimientos(), reportColors.green, [6, 7, 8], 'Relaciona cada factura y cada pago/cancelacion con su cliente, saldo e interpretacion contable.')}
         ${htmlTable('Caja y egresos', ['Fecha', 'Tipo', 'Concepto', 'Trabajador', 'Monto', 'Medio'], egresosRows(), reportColors.orange, [4], 'Lista salidas de caja del periodo, incluyendo egresos generales, pagos a trabajadores, anticipos y prestamos.')}
+        ${htmlTable('Pedidos y pacas por trabajador', ['Trabajador', 'Pedidos', 'Entregados', 'Pacas', 'Productos vendidos', 'Total pedidos'], pedidosTrabajadorProductoRows(), reportColors.blue, [5], 'Agrupa pedidos del periodo por trabajador y detalla cuantas pacas/productos vendio cada uno.')}
         ${htmlTable('Trabajadores - labores', ['Fecha', 'Trabajador', 'Labor', 'Cantidad', 'Valor', 'Observaciones'], laboresRows(), reportColors.green, [4], 'Detalle de labores registradas y valor generado por trabajador.')}
         ${htmlTable('Trabajadores - pagos, anticipos y abonos', ['Fecha', 'Trabajador', 'Movimiento', 'Monto'], movimientosTrabajadoresRows(), reportColors.navy, [3], 'Consolida pagos entregados, anticipos/prestamos y abonos de deuda del periodo.')}
         ${htmlTable('Anticipos, prestamos y saldos', ['Fecha', 'Trabajador', 'Numero', 'Tipo', 'Monto original', 'Abonado', 'Saldo', 'Estado', 'Motivo'], deudasTrabajadoresRows(), reportColors.orange, [4, 5, 6], 'Detalle contable de cada deuda: valor original, abonos aplicados y saldo pendiente.')}
         ${htmlTable('Resumen por trabajador', ['Trabajador', 'Detalle labores', 'Cant. labores', 'Generado', 'Pagado', 'Anticipado', 'Abonado'], resumenTrabajadores().map((t: any) => [t.trabajador, t.laboresDetalle, t.labores, t.generado, t.pagado, t.anticipado, t.abonado]), reportColors.slate, [3, 4, 5, 6], 'Resume la actividad economica de cada trabajador dentro del periodo con el detalle de labores realizadas.')}
         ${htmlTable('Clientes', ['Cliente', 'Pedidos', 'Entregados', 'Pendientes', 'Total pedido'], clientes, reportColors.green, [4], 'Agrupa pedidos del periodo por cliente, usando la fecha del pedido.')}
         ${htmlTable('Productos pedidos', ['Producto', 'Cantidad total', 'Valor total'], resumenProductos().map((p: any) => [p.producto, p.cantidad, p.total]), reportColors.navy, [2], 'Agrupa cantidades y valores solicitados por producto dentro del periodo.')}
-        ${htmlTable('Detalle completo de pedidos', ['Fecha', 'Pedido', 'Cliente', 'Estado pedido', 'Factura', 'Estado factura', 'Saldo factura', 'Producto', 'Cant.', 'Precio unit.', 'Subtotal', 'Total pedido', 'Observaciones'], pedidoRows, reportColors.orange, [6, 9, 10, 11], 'Lista cada producto solicitado, con estado del pedido y estado actual de la factura asociada.')}
+        ${htmlTable('Detalle completo de pedidos', ['Fecha', 'Pedido', 'Cliente', 'Trabajador', 'Estado pedido', 'Factura', 'Estado factura', 'Saldo factura', 'Producto', 'Cant.', 'Precio unit.', 'Subtotal', 'Total pedido', 'Observaciones'], pedidoRows, reportColors.orange, [7, 10, 11, 12], 'Lista cada producto solicitado, con estado del pedido y estado actual de la factura asociada.')}
         ${pedidosPorDia}
         ${htmlTable('Ventas por estado', ['Estado', 'Cantidad', 'Total'], ventasPorEstado.value.map(v => [v.estado, v.count, v.total]), reportColors.blue, [2], 'Clasifica las facturas emitidas en el periodo por su estado actual.')}
         ${htmlTable('Pedidos por estado', ['Estado', 'Cantidad'], pedidosPorEstado.value.map(p => [p.estado, p.count]), reportColors.slate, [], 'Clasifica los pedidos del periodo por estado operativo.')}
@@ -1484,6 +1590,33 @@ async function exportPdf() {
     })
 
     autoTable(doc, {
+      startY: addPdfSection(doc, 'Pedidos y pacas por trabajador', 'Agrupa pedidos del periodo por trabajador y muestra cuantas pacas/productos vendio cada uno.'),
+      ...pdfTableDefaults(),
+      head: [['Trabajador', 'Pedidos', 'Entregados', 'Pacas', 'Productos vendidos', 'Total pedidos']],
+      body: pedidosTrabajadorProductoRows().map(row => [
+        row[0],
+        String(row[1]),
+        String(row[2]),
+        String(row[3]),
+        row[4],
+        formatCurrency(row[5]),
+      ]),
+      styles: { fontSize: 7.2, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 42 },
+        1: { cellWidth: 16, halign: 'center' },
+        2: { cellWidth: 22, halign: 'center' },
+        3: { cellWidth: 16, halign: 'center' },
+        4: { cellWidth: 118 },
+        5: { cellWidth: 28, halign: 'right' },
+      },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { top: 34, left: 14, right: 14, bottom: 14 },
+      didDrawPage: () => drawPdfHeader(doc),
+    })
+
+    autoTable(doc, {
       startY: addPdfSection(doc, 'Anticipos, prestamos y saldos', 'Detalle contable de cada deuda: valor original entregado, abonos aplicados y saldo pendiente.'),
       ...pdfTableDefaults(),
       head: [['Fecha', 'Trabajador', 'Numero', 'Tipo', 'Monto', 'Abonado', 'Saldo', 'Estado']],
@@ -1590,17 +1723,17 @@ async function exportPdf() {
     autoTable(doc, {
       startY: addPdfSection(doc, 'Detalle completo de pedidos', 'Lista cada producto solicitado, con estado del pedido y estado actual de la factura asociada.'),
       ...pdfTableDefaults(),
-      head: [['Fecha', 'Pedido', 'Cliente', 'Estado pedido', 'Factura', 'Estado factura', 'Saldo factura', 'Producto', 'Cant.', 'Subtotal']],
+      head: [['Fecha', 'Pedido', 'Cliente', 'Trabajador', 'Estado pedido', 'Factura', 'Estado factura', 'Producto', 'Cant.', 'Subtotal']],
       body: pedidosRaw.value
         .flatMap((p: any) =>
           (p.detalles ?? []).map((d: any) => [
             formatDate(p.fecha),
             p.numero,
             p.cliente?.nombre ?? '—',
+            trabajadorPedido(p).nombre,
             p.estado,
             numeroFactura(p),
             estadoFactura(p),
-            formatCurrency(saldoFactura(p)),
             d.producto?.nombre ?? d.productoId,
             String(Number(d.cantidad ?? 0)),
             formatCurrency(Number(d.subtotal ?? 0)),
@@ -1611,11 +1744,11 @@ async function exportPdf() {
       columnStyles: {
         0: { cellWidth: 17 },
         1: { cellWidth: 31 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 24 },
-        4: { cellWidth: 31 },
-        5: { cellWidth: 24 },
-        6: { cellWidth: 22, halign: 'right' },
+        2: { cellWidth: 34 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 24 },
+        5: { cellWidth: 31 },
+        6: { cellWidth: 24 },
         7: { cellWidth: 42 },
         8: { cellWidth: 10, halign: 'center' },
         9: { cellWidth: 22, halign: 'right' },

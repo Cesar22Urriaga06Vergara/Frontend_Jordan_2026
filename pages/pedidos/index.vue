@@ -44,6 +44,7 @@
           <tr class="text-center text-gray-700 text-xs uppercase tracking-wide">
             <th class="px-4 py-4 font-bold">Número</th>
             <th class="px-4 py-4 font-bold">Cliente</th>
+            <th class="px-4 py-4 font-bold">Trabajador</th>
             <th class="px-4 py-4 font-bold">Fecha</th>
             <th class="px-4 py-4 font-bold">Estado</th>
             <th class="px-4 py-4 font-bold">Items</th>
@@ -52,14 +53,15 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="py-8 text-center text-gray-400">Cargando...</td>
+            <td colspan="7" class="py-8 text-center text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="!pedidos.length">
-            <td colspan="6" class="py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo pedido.</td>
+            <td colspan="7" class="py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo pedido.</td>
           </tr>
           <tr v-for="p in pedidos" :key="p.id" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
             <td class="px-4 py-4 font-mono text-xs text-gray-500">{{ p.numero }}</td>
             <td class="px-4 py-4 font-semibold text-gray-900">{{ p.cliente?.nombre }}</td>
+            <td class="px-4 py-4 text-gray-700">{{ p.trabajador?.nombre ?? '-' }}</td>
             <td class="px-4 py-4 text-gray-700">{{ formatDate(p.fecha) }}</td>
             <td class="px-4 py-4"><EstadoBadge :estado="p.estado" /></td>
             <td class="px-4 py-4 text-right text-gray-700 font-medium">{{ p.detalles?.length ?? 0 }}</td>
