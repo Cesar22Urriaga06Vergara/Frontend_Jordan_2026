@@ -63,6 +63,7 @@ export function usePrintTicket() {
     const empresa = await _getEmpresa()
     const numero = pedido.numeroPedido ?? pedido.numero ?? `#${pedido.id}`
     const cliente = pedido.cliente?.nombre ?? '-'
+    const trabajador = pedido.trabajador?.nombre ?? (pedido.trabajadorId ? `Trabajador ${pedido.trabajadorId}` : '-')
     const fechaStr = _formatFecha(pedido.fechaPedido ?? pedido.fecha)
     const detalles: any[] = pedido.detalles ?? []
     const observaciones: string = pedido.observaciones ?? ''
@@ -175,6 +176,7 @@ export function usePrintTicket() {
     <div class="row"><span class="label">Pedido</span><span class="value">${_escapeHtml(numero)}</span></div>
     <div class="row"><span class="label">Fecha</span><span class="value normal">${fechaStr}</span></div>
     <div class="row"><span class="label">Cliente</span><span class="value">${_escapeHtml(cliente)}</span></div>
+    <div class="row"><span class="label">Trabajador</span><span class="value">${_escapeHtml(trabajador)}</span></div>
     <div class="row"><span class="label">Factura</span><span class="value normal">${_escapeHtml(factura.numero)}</span></div>
     ${factura.saldo > 0 ? `<div class="row"><span class="label">Saldo factura</span><span class="value">${_formatCOP(factura.saldo)}</span></div>` : ''}
   </div>

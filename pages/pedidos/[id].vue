@@ -45,6 +45,10 @@
           <p class="text-gray-500">Total</p>
           <p class="font-medium">{{ formatCurrency(pedido.totalPedido ?? totalPedido) }}</p>
         </div>
+        <div>
+          <p class="text-gray-500">Trabajador</p>
+          <p class="font-medium">{{ pedido.trabajador?.nombre ?? '-' }}</p>
+        </div>
         <div v-if="pedido.observaciones">
           <p class="text-gray-500">Observaciones</p>
           <p class="font-medium">{{ pedido.observaciones }}</p>
