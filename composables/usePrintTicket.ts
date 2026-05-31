@@ -95,52 +95,67 @@ export function usePrintTicket() {
   <meta charset="utf-8">
   <title>Pedido ${_escapeHtml(numero)}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { size: 80mm auto; margin: 4mm 3mm; }
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 8.6pt;
-      line-height: 1.28;
-      width: 74mm;
-      color: #111827;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      color: #000 !important;
+      font-weight: 700;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    @page { size: 80mm auto; margin: 3mm 2.5mm; }
+    body {
+      font-family: Arial Black, Arial, Helvetica, sans-serif;
+      font-size: 9.2pt;
+      font-weight: 800;
+      line-height: 1.34;
+      width: 75mm;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      -webkit-text-stroke: .08px #000;
+      text-rendering: geometricPrecision;
+    }
     .ticket { padding: 1mm 0; }
-    .header { text-align: center; padding-bottom: 5px; border-bottom: 1px solid #d1d5db; }
-    .logo { width: 18mm; height: 18mm; object-fit: contain; margin-bottom: 3px; }
-    .company { font-size: 12.5pt; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #0f172a; }
-    .meta-small { font-size: 7.1pt; color: #374151; margin-top: 1px; }
+    .header { text-align: center; padding-bottom: 5px; border-bottom: 2px solid #000; }
+    .logo { width: 18mm; height: 18mm; object-fit: contain; margin-bottom: 3px; filter: grayscale(1) contrast(2.4); }
+    .company { font-size: 13.4pt; font-weight: 900; letter-spacing: .7px; text-transform: uppercase; color: #000; }
+    .meta-small { font-size: 8pt; font-weight: 800; color: #000; margin-top: 1px; }
     .pill {
       display: inline-block;
       margin-top: 5px;
       padding: 3px 7px;
-      border: 1px solid #94a3b8;
+      border: 2px solid #000;
       border-radius: 999px;
-      font-size: 7pt;
-      font-weight: 700;
+      font-size: 7.8pt;
+      font-weight: 900;
       text-transform: uppercase;
       letter-spacing: .05em;
     }
-    .section { margin-top: 7px; padding-top: 6px; border-top: 1px dashed #94a3b8; }
-    .section-title { font-size: 7.1pt; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #475569; margin-bottom: 4px; }
+    .section { margin-top: 7px; padding-top: 6px; border-top: 2px dashed #000; }
+    .section-title { font-size: 8pt; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; color: #000; margin-bottom: 4px; }
     .row { display: flex; justify-content: space-between; gap: 6px; margin: 2px 0; }
-    .label { color: #64748b; white-space: nowrap; }
-    .value { text-align: right; font-weight: 700; word-break: break-word; }
-    .value.normal { font-weight: 500; }
-    table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-    th { padding: 4px 2px; border-bottom: 1px solid #111827; font-size: 7pt; color: #475569; text-transform: uppercase; text-align: left; }
-    td { padding: 5px 2px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-    .product strong { display: block; font-size: 8.2pt; color: #111827; }
-    .product span { display: block; margin-top: 1px; font-size: 7pt; color: #64748b; }
-    .qty { width: 10mm; text-align: center; font-weight: 700; }
-    .money { width: 22mm; text-align: right; font-weight: 800; white-space: nowrap; }
-    .total-box { margin-top: 7px; padding: 7px 0; border-top: 2px solid #111827; border-bottom: 2px solid #111827; }
-    .total-box .label { font-size: 9pt; font-weight: 800; color: #111827; }
-    .total-box .value { font-size: 13pt; color: #111827; }
-    .note { margin-top: 5px; padding: 5px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 7.3pt; color: #374151; }
-    .footer { margin-top: 8px; text-align: center; font-size: 7.3pt; color: #475569; }
-    .thanks { font-size: 8.5pt; font-weight: 800; color: #111827; margin-bottom: 2px; }
+    .label { color: #000; white-space: nowrap; font-weight: 900; }
+    .value { text-align: right; font-weight: 900; word-break: break-word; }
+    .value.normal { font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; font-size: 8.6pt; }
+    th { padding: 4px 2px; border-bottom: 2px solid #000; font-size: 7.8pt; color: #000; text-transform: uppercase; text-align: left; font-weight: 900; }
+    td { padding: 5px 2px; border-bottom: 1.5px solid #000; vertical-align: top; }
+    .product strong { display: block; font-size: 9pt; font-weight: 900; color: #000; }
+    .product span { display: block; margin-top: 1px; font-size: 7.8pt; font-weight: 800; color: #000; }
+    .qty { width: 10mm; text-align: center; font-weight: 900; }
+    .money { width: 23mm; text-align: right; font-weight: 900; white-space: nowrap; }
+    .total-box { margin-top: 7px; padding: 7px 0; border-top: 3px solid #000; border-bottom: 3px solid #000; }
+    .total-box .label { font-size: 9.8pt; font-weight: 900; color: #000; }
+    .total-box .value { font-size: 14pt; font-weight: 900; color: #000; }
+    .note { margin-top: 5px; padding: 5px; border: 2px solid #000; border-radius: 4px; font-size: 8pt; font-weight: 800; color: #000; }
+    .footer { margin-top: 8px; text-align: center; font-size: 8pt; font-weight: 800; color: #000; }
+    .thanks { font-size: 9.2pt; font-weight: 900; color: #000; margin-bottom: 2px; }
+    @media print {
+      body { font-weight: 900; }
+      img { opacity: 1; }
+    }
   </style>
 </head>
 <body>
