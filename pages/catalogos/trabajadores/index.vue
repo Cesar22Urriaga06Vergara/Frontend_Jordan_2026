@@ -258,10 +258,13 @@ async function fetchTrabajadores() {
     if (filtroTipo.value) params.tipo = filtroTipo.value
     if (filtroActivo.value !== '') params.activo = filtroActivo.value
     const res = await api.get('/catalogos/trabajadores', { params })
-    const d = apiResponse.unwrap(res) as any
-    trabajadores.value = d.items ?? d
-    total.value = d.total ?? trabajadores.value.length
+    const page = apiResponse.page(res)
+    trabajadores.value = apiResponse.list(res)
+    total.value = page.total
+    pagina.value = page.page
   } catch {
+    trabajadores.value = []
+    total.value = 0
     notify.error('Error al cargar trabajadores')
   } finally {
     loading.value = false

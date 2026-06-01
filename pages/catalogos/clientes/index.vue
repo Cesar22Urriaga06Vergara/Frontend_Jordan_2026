@@ -63,10 +63,10 @@
           <tr v-if="loading">
             <td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
           </tr>
-          <tr v-else-if="!paginatedClientes.length">
+          <tr v-else-if="!clientes.length">
             <td colspan="6" class="px-4 py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo cliente.</td>
           </tr>
-          <tr v-for="c in paginatedClientes" :key="c.id" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+          <tr v-for="c in clientes" :key="c.id" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
             <td class="px-4 py-4">
               <p class="text-xs text-gray-400 font-mono">{{ c.codigo }}</p>
               <p class="font-semibold text-gray-900">{{ c.nombre }}</p>
@@ -117,9 +117,9 @@
     <div class="flex items-center justify-between text-sm text-gray-500">
       <span>{{ totalFiltrados }} clientes</span>
       <div class="flex gap-2">
-        <button class="btn-secondary px-3 py-1 text-xs" :disabled="pagina === 1" @click="pagina--">Ant.</button>
+        <button class="btn-secondary px-3 py-1 text-xs" :disabled="pagina === 1" @click="cambiarPagina(-1)">Ant.</button>
         <span class="px-2 py-1">{{ pagina }} / {{ totalPaginas }}</span>
-        <button class="btn-secondary px-3 py-1 text-xs" :disabled="pagina >= totalPaginas" @click="pagina++">Sig.</button>
+        <button class="btn-secondary px-3 py-1 text-xs" :disabled="pagina >= totalPaginas" @click="cambiarPagina(1)">Sig.</button>
       </div>
     </div>
 
@@ -198,9 +198,7 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formats'
 import { CheckCircle, Edit, Eye, Plus, Search, Trash2, XCircle } from 'lucide-vue-next'
-import { useCRUD } from '~/composables/useCRUD'
 import { usePagination } from '~/composables/usePagination'
-import { useSearch } from '~/composables/useSearch'
 import { useModal } from '~/composables/useModal'
 import { useApi } from '~/composables/useApi'
 import { useNotification } from '~/composables/useNotification'
@@ -214,30 +212,17 @@ const apiResponse = useApiResponse()
 
 const TIPOS_CLIENTE = ['TIENDA', 'NEGOCIO', 'DIRECTO', 'VEREDA', 'FRECUENTE']
 
-// --- Composables para Gestión de Clientes ---
-const { 
-  items: clientes, 
-  loading, 
-  saving, 
-  fetchItems: fetchClientes 
-} = useCRUD({
-  endpoint: '/catalogos/clientes',
-  api,
-  notify,
-})
+const clientes = ref<any[]>([])
+const loading = ref(false)
 
 const { 
   pagina, 
   total, 
-  totalPaginas 
+  LIMITE,
+  totalPaginas,
 } = usePagination(1, 15)
 
-const { 
-  filteredItems, 
-  searchQuery, 
-  filters, 
-  setSearchFields
-} = useSearch(clientes)
+const searchQuery = ref('')
 
 const { 
   isOpen: modalPrecios, 
@@ -254,15 +239,6 @@ const productos = ref<any[]>([])
 const nuevoProductoId = ref<number | ''>('')
 const nuevoPrecio = ref<number>(0)
 const clientePrecios = ref<any>(null)
-
-// --- Configurar búsqueda ---
-setSearchFields('nombre' as any, 'codigo' as any, 'telefono' as any)
-
-async function searchAndReset() {
-  pagina.value = 1
-  await fetchClientes()
-}
-
 
 function confirmarEliminarCliente(c: any) {
   clienteAEliminar.value = c
@@ -343,37 +319,46 @@ async function guardarPrecio() {
   }
 }
 
-// --- Items paginados y filtrados ---
 const filtroActivo = ref('')
 const filtroTipo = ref('')
 
-const clientesFinales = computed(() => {
-  let result: any[] = filteredItems.value
+async function fetchClientes() {
+  loading.value = true
+  try {
+    const params: Record<string, any> = {
+      page: pagina.value,
+      limit: LIMITE,
+    }
+    if (searchQuery.value) params.search = searchQuery.value
+    if (filtroTipo.value) params.tipo = filtroTipo.value
+    if (filtroActivo.value !== '') params.activo = filtroActivo.value
 
-  // Aplicar filtro de tipo
-  if (filtroTipo.value) {
-    result = result.filter((c: any) => c.tipo === filtroTipo.value)
+    const res = await api.get('/catalogos/clientes', { params })
+    const page = apiResponse.page(res)
+    clientes.value = apiResponse.list(res)
+    total.value = page.total
+    pagina.value = page.page
+  } catch {
+    clientes.value = []
+    total.value = 0
+    notify.error('Error al cargar clientes')
+  } finally {
+    loading.value = false
   }
+}
 
-  // Aplicar filtro de estado
-  if (filtroActivo.value !== '') {
-    const isActive = filtroActivo.value === 'true'
-    result = result.filter((c: any) => c.activo === isActive)
-  }
+function cambiarPagina(delta: number) {
+  pagina.value = Math.max(1, Math.min(totalPaginas.value, pagina.value + delta))
+  fetchClientes()
+}
 
-  return result
-})
+const totalFiltrados = computed(() => total.value)
 
-const paginatedClientes = computed(() => {
-  const start = (pagina.value - 1) * 15
-  return clientesFinales.value.slice(start, start + 15)
-})
-
-const totalFiltrados = computed(() => clientesFinales.value.length)
-
-// Watch para resetear página cuando cambian filtros
+let searchTimeout: ReturnType<typeof setTimeout>
 watch([filtroActivo, filtroTipo, searchQuery], () => {
   pagina.value = 1
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => fetchClientes(), 350)
 })
 
 onMounted(() => {
