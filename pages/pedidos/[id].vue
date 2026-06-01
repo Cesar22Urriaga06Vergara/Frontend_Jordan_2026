@@ -18,6 +18,13 @@
           <p class="text-sm text-gray-500 mt-0.5">{{ pedido.cliente?.nombre ?? '—' }}</p>
         </div>
         <div class="flex items-center gap-3">
+          <NuxtLink
+            v-if="puedeEditarPedido"
+            :to="`/pedidos/${pedido.id}/edit`"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
+          >
+            <Pencil :size="15" /> Editar
+          </NuxtLink>
           <button
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 text-sm font-medium transition-colors"
             @click="imprimirPedido(pedido)"
@@ -171,7 +178,7 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDate } from '~/utils/formats'
-import { Printer, Trash2 } from 'lucide-vue-next'
+import { Pencil, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -214,6 +221,10 @@ const TRANSICIONES: Record<string, { valor: string; label: string; color?: strin
 
 const transicionesDisponibles = computed(() =>
   pedido.value ? (TRANSICIONES[pedido.value.estado] ?? []) : []
+)
+
+const puedeEditarPedido = computed(() =>
+  pedido.value ? ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(pedido.value.estado) : false
 )
 
 const totalPedido = computed(() => {

@@ -42,9 +42,23 @@
             :key="item.id"
             class="px-4 py-3 flex items-center justify-between gap-2 bg-white"
           >
-            <span>{{ item.pedido?.numero ?? item.pedidoId }}</span>
+            <div class="min-w-0">
+              <p class="font-medium text-gray-800">{{ item.pedido?.numero ?? item.pedidoId }}</p>
+              <p class="text-xs text-gray-500 truncate">
+                {{ item.pedido?.cliente?.nombre ?? '' }}
+                <span v-if="item.pedido?.trabajador?.nombre"> · {{ item.pedido.trabajador.nombre }}</span>
+              </p>
+            </div>
             <div class="flex gap-2 items-center">
               <EstadoBadge :estado="item.pedido?.estado ?? ''" />
+              <button
+                v-if="puedeCorregirPedido(item)"
+                type="button"
+                class="text-xs text-blue-600 hover:underline"
+                @click="abrirEditarPedidoEnRuta(item)"
+              >
+                Corregir
+              </button>
               <button
                 v-if="puedeEditarPedidos"
                 type="button"
@@ -171,18 +185,113 @@
       @confirm="eliminarRuta"
       @cancel="modalEliminarRuta?.close()"
     />
+
+    <div
+      v-if="modalEditarPedido && pedidoEditando"
+      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      @click.self="cerrarEditarPedidoEnRuta"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="font-bold text-gray-800">Corregir pedido</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ pedidoEditando.numero }}</p>
+          </div>
+          <EstadoBadge :estado="pedidoEditando.estado" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <FormField label="Cliente *">
+            <select v-model="pedidoForm.clienteId" class="form-input">
+              <option :value="undefined">Seleccionar...</option>
+              <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
+                {{ cliente.nombre }}
+              </option>
+            </select>
+          </FormField>
+          <FormField label="Trabajador *">
+            <select v-model="pedidoForm.trabajadorId" class="form-input">
+              <option :value="undefined">Seleccionar...</option>
+              <option v-for="trabajador in trabajadores" :key="trabajador.id" :value="trabajador.id">
+                {{ trabajador.nombre }}
+              </option>
+            </select>
+          </FormField>
+          <FormField label="Fecha *">
+            <input v-model="pedidoForm.fecha" type="date" class="form-input" />
+          </FormField>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="font-semibold text-gray-700">Productos</h3>
+            <button
+              type="button"
+              class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1"
+              @click="agregarDetallePedido"
+            >
+              <Plus :size="14" />
+              Agregar
+            </button>
+          </div>
+
+          <div
+            v-for="(detalle, index) in pedidoForm.detalles"
+            :key="index"
+            class="grid grid-cols-1 sm:grid-cols-[1fr_90px_130px_36px] gap-2 items-end"
+          >
+            <FormField label="Producto *">
+              <select v-model="detalle.productoId" class="form-input" @change="aplicarPrecioProducto(detalle)">
+                <option :value="undefined">Seleccionar...</option>
+                <option v-for="producto in productos" :key="producto.id" :value="producto.id">
+                  {{ producto.nombre }}
+                </option>
+              </select>
+            </FormField>
+            <FormField label="Cant.">
+              <input v-model.number="detalle.cantidad" type="number" min="1" class="form-input" />
+            </FormField>
+            <FormField label="Precio">
+              <input v-model.number="detalle.precioUnitario" type="number" min="0" class="form-input" />
+            </FormField>
+            <button
+              type="button"
+              class="h-10 rounded-lg text-red-500 hover:bg-red-50"
+              @click="pedidoForm.detalles.splice(index, 1)"
+            >
+              <X :size="16" class="mx-auto" />
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t pt-4">
+          <p class="text-sm text-gray-600">
+            Total corregido:
+            <span class="font-semibold text-gray-900">{{ formatCurrency(totalPedidoEditando) }}</span>
+          </p>
+          <div class="flex justify-end gap-2">
+            <button class="btn-secondary" @click="cerrarEditarPedidoEnRuta">Cancelar</button>
+            <button class="btn-primary" :disabled="guardandoEdicionPedido" @click="guardarPedidoEnRuta">
+              {{ guardandoEdicionPedido ? 'Guardando...' : 'Guardar corrección' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { formatDate } from '~/utils/formats'
+import { formatCurrency, formatDate } from '~/utils/formats'
 import {
   ArrowLeft,
   Ban,
   ClipboardList,
   PackageCheck,
+  Plus,
   Trash2,
   Truck,
+  X,
 } from 'lucide-vue-next'
 definePageMeta({ middleware: 'auth' })
 
@@ -243,9 +352,28 @@ const modalAnulaConfirm = ref()
 const modalEliminarRuta = ref()
 const navegandoLiquidacion = ref(false)
 const deleting = ref(false)
+const modalEditarPedido = ref(false)
+const guardandoEdicionPedido = ref(false)
+const pedidoEditando = ref<any>(null)
+const clientes = ref<any[]>([])
+const productos = ref<any[]>([])
+const trabajadores = ref<any[]>([])
+const pedidoForm = reactive({
+  clienteId: undefined as number | undefined,
+  trabajadorId: undefined as number | undefined,
+  fecha: '',
+  observaciones: '',
+  detalles: [] as Array<{ productoId: number | undefined; cantidad: number; precioUnitario: number }>,
+})
 
 const puedeEditarPedidos = computed(() =>
   ['CREADA', 'CARGADA', 'EN_ENTREGA', 'EN_LIQUIDACION'].includes(ruta.value?.estado ?? ''),
+)
+
+const totalPedidoEditando = computed(() =>
+  pedidoForm.detalles.reduce((total, detalle) => {
+    return total + Number(detalle.cantidad ?? 0) * Number(detalle.precioUnitario ?? 0)
+  }, 0),
 )
 
 const acciones = computed(() => {
@@ -253,6 +381,120 @@ const acciones = computed(() => {
   if (!e || e === 'EN_LIQUIDACION' || e === 'LIQUIDADA' || e === 'ANULADA') return []
   return TRANSICIONES[e] ?? []
 })
+
+function puedeCorregirPedido(item: any) {
+  const estadoPedido = item?.pedido?.estado
+  return puedeEditarPedidos.value && ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(estadoPedido)
+}
+
+function fechaInput(value: string | Date | undefined) {
+  if (!value) return new Date().toISOString().split('T')[0]
+  return String(value).split('T')[0]
+}
+
+function listaCatalogo(res: any) {
+  const data = apiResponse.unwrap(res) as any
+  return data.items ?? data.data ?? data ?? []
+}
+
+async function cargarCatalogosEdicion() {
+  if (clientes.value.length && productos.value.length && trabajadores.value.length) return
+
+  const [clientesRes, productosRes, trabajadoresRes] = await Promise.all([
+    api.get('/catalogos/clientes', { params: { activo: 'true', limit: 500 } }),
+    api.get('/catalogos/productos', { params: { activo: 'true', limit: 500 } }),
+    api.get('/catalogos/trabajadores', { params: { activo: 'true', limit: 500 } }),
+  ])
+  clientes.value = listaCatalogo(clientesRes)
+  productos.value = listaCatalogo(productosRes)
+  trabajadores.value = listaCatalogo(trabajadoresRes)
+}
+
+async function abrirEditarPedidoEnRuta(item: any) {
+  const pedidoId = item?.pedido?.id ?? item?.pedidoId
+  if (!pedidoId) return
+
+  try {
+    await cargarCatalogosEdicion()
+    const res = await api.get(`/operaciones/pedidos/${pedidoId}`)
+    const pedido = apiResponse.unwrap(res) as any
+    pedidoEditando.value = pedido
+    pedidoForm.clienteId = pedido.clienteId
+    pedidoForm.trabajadorId = pedido.trabajadorId
+    pedidoForm.fecha = fechaInput(pedido.fecha)
+    pedidoForm.observaciones = pedido.observaciones ?? ''
+    pedidoForm.detalles = (pedido.detalles ?? []).map((detalle: any) => ({
+      productoId: detalle.productoId,
+      cantidad: Number(detalle.cantidad ?? 1),
+      precioUnitario: Number(detalle.precioUnitario ?? 0),
+    }))
+    modalEditarPedido.value = true
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'No se pudo cargar el pedido para corregir')
+  }
+}
+
+function cerrarEditarPedidoEnRuta() {
+  modalEditarPedido.value = false
+  pedidoEditando.value = null
+  pedidoForm.detalles = []
+}
+
+function agregarDetallePedido() {
+  pedidoForm.detalles.push({ productoId: undefined, cantidad: 1, precioUnitario: 0 })
+}
+
+function aplicarPrecioProducto(detalle: { productoId: number | undefined; precioUnitario: number }) {
+  const producto = productos.value.find((p) => p.id === detalle.productoId)
+  if (producto && !detalle.precioUnitario) {
+    detalle.precioUnitario = Number(producto.precioVenta ?? producto.precio ?? 0)
+  }
+}
+
+function validarPedidoEnRuta() {
+  if (!pedidoForm.clienteId) return 'Selecciona un cliente'
+  if (!pedidoForm.trabajadorId) return 'Selecciona un trabajador'
+  if (!pedidoForm.fecha) return 'Selecciona una fecha'
+  const detallesValidos = pedidoForm.detalles.filter(
+    (detalle) => detalle.productoId && detalle.cantidad > 0 && detalle.precioUnitario > 0,
+  )
+  if (!detallesValidos.length) return 'Agrega al menos un producto valido'
+  if (detallesValidos.length !== pedidoForm.detalles.length) {
+    return 'Revisa productos, cantidades y precios antes de guardar'
+  }
+  return ''
+}
+
+async function guardarPedidoEnRuta() {
+  if (!pedidoEditando.value) return
+  const error = validarPedidoEnRuta()
+  if (error) {
+    notify.error(error)
+    return
+  }
+
+  guardandoEdicionPedido.value = true
+  try {
+    await api.patch(`/operaciones/pedidos/${pedidoEditando.value.id}`, {
+      clienteId: pedidoForm.clienteId,
+      trabajadorId: pedidoForm.trabajadorId,
+      fecha: pedidoForm.fecha,
+      observaciones: pedidoForm.observaciones || undefined,
+      detalles: pedidoForm.detalles.map((detalle) => ({
+        productoId: detalle.productoId,
+        cantidad: detalle.cantidad,
+        precioUnitario: detalle.precioUnitario,
+      })),
+    })
+    notify.success(`Pedido ${pedidoEditando.value.numero} corregido`)
+    cerrarEditarPedidoEnRuta()
+    await fetchRuta()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'No se pudo corregir el pedido')
+  } finally {
+    guardandoEdicionPedido.value = false
+  }
+}
 
 async function fetchRuta() {
   loading.value = true
