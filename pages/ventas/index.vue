@@ -104,6 +104,22 @@
                   <Eye class="h-3.5 w-3.5" />
                   Ver
                 </button>
+                <button
+                  v-if="puedeEditarVenta(v)"
+                  class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1"
+                  @click="abrirEditarVenta(v)"
+                >
+                  <Pencil class="h-3.5 w-3.5" />
+                  Editar
+                </button>
+                <button
+                  v-if="puedeEliminarVenta(v)"
+                  class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1 text-red-600 hover:text-red-700"
+                  @click="eliminarVenta(v)"
+                >
+                  <Trash2 class="h-3.5 w-3.5" />
+                  Eliminar
+                </button>
               </div>
             </td>
           </tr>
@@ -129,8 +145,10 @@
     >
       <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div>
-          <h2 class="font-bold text-gray-800">Nueva venta</h2>
-          <p class="text-sm text-gray-500 mt-1">Selecciona cliente, productos y pago inicial si aplica.</p>
+          <h2 class="font-bold text-gray-800">{{ ventaEditando ? 'Editar venta' : 'Nueva venta' }}</h2>
+          <p class="text-sm text-gray-500 mt-1">
+            {{ ventaEditando ? ventaEditando.numero : 'Selecciona cliente, productos y pago inicial si aplica.' }}
+          </p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -143,10 +161,10 @@
           <FormField label="Fecha venta *" :error="nvErrors.fechaVenta">
             <input v-model="nvForm.fechaVenta" type="date" class="form-input" />
           </FormField>
-          <FormField label="Monto pagado ($)">
+          <FormField v-if="!ventaEditando" label="Monto pagado ($)">
             <input v-model.number="nvForm.montoPagado" class="form-input" type="number" min="0" />
           </FormField>
-          <FormField label="Forma de pago">
+          <FormField v-if="!ventaEditando" label="Forma de pago">
             <select v-model="nvForm.formaPago" class="form-input">
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
@@ -191,7 +209,7 @@
           <button class="btn-secondary" @click="modalNueva = false">Cancelar</button>
           <button class="btn-primary inline-flex items-center gap-2" :disabled="saving || !nvForm.clienteId || !nvForm.detalles.length" @click="crearVenta">
             <ReceiptText class="h-4 w-4" />
-            {{ saving ? 'Guardando…' : 'Crear venta' }}
+            {{ saving ? 'Guardando…' : ventaEditando ? 'Guardar cambios' : 'Crear venta' }}
           </button>
         </div>
       </div>
@@ -286,7 +304,7 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
-import { CreditCard, Eye, Plus, ReceiptText, RefreshCw, WalletCards } from 'lucide-vue-next'
+import { CreditCard, Eye, Pencil, Plus, ReceiptText, RefreshCw, Trash2, WalletCards } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -310,6 +328,7 @@ const productos = ref<any[]>([])
 
 // Nueva venta
 const modalNueva = ref(false)
+const ventaEditando = ref<any>(null)
 const nvForm = reactive({
   clienteId: undefined as number | undefined,
   fechaVenta: todayISO(),
@@ -388,6 +407,7 @@ async function fetchCatalogos() {
 }
 
 function abrirNuevaVenta() {
+  ventaEditando.value = null
   nvForm.clienteId = undefined
   nvForm.fechaVenta = todayISO()
   nvForm.montoPagado = 0
@@ -396,6 +416,29 @@ function abrirNuevaVenta() {
   nvForm.detalles = []
   fetchCatalogos()
   modalNueva.value = true
+}
+
+async function abrirEditarVenta(v: any) {
+  try {
+    ventaEditando.value = v
+    await fetchCatalogos()
+    const res = await api.get(`/operaciones/ventas/${v.id}`)
+    const venta = apiResponse.unwrap(res) as any
+    ventaEditando.value = venta
+    nvForm.clienteId = venta.clienteId
+    nvForm.fechaVenta = venta.fecha?.split('T')[0] ?? todayISO()
+    nvForm.montoPagado = 0
+    nvForm.formaPago = 'EFECTIVO'
+    nvForm.notas = ''
+    nvForm.detalles = (venta.detalles ?? []).map((d: any) => ({
+      productoId: d.productoId,
+      cantidad: Number(d.cantidad ?? 1),
+      precioUnitario: Number(d.precioUnitario ?? 0),
+    }))
+    modalNueva.value = true
+  } catch {
+    notify.error('No se pudo cargar la venta para editar')
+  }
 }
 
 function agregarDetalle() {
@@ -413,8 +456,8 @@ function onClienteChange() {
 
 async function crearVenta() {
   if (!validarNuevaVenta()) return
-  if (nvForm.montoPagado < 0) { notify.error('El monto pagado no puede ser negativo'); return }
-  if (nvForm.montoPagado > totalNueva.value) {
+  if (!ventaEditando.value && nvForm.montoPagado < 0) { notify.error('El monto pagado no puede ser negativo'); return }
+  if (!ventaEditando.value && nvForm.montoPagado > totalNueva.value) {
     notify.error('El monto pagado inicial no puede superar el total de la venta')
     return
   }
@@ -431,16 +474,49 @@ async function crearVenta() {
       })),
       observaciones: nvForm.notas || undefined,
     }
-    if (nvForm.montoPagado > 0) {
+    if (!ventaEditando.value && nvForm.montoPagado > 0) {
       payload.montoPagado = nvForm.montoPagado
       payload.tipoPago = nvForm.formaPago
     }
-    await api.post('/operaciones/ventas', payload)
-    notify.success('Venta creada')
+    if (ventaEditando.value) {
+      await api.patch(`/operaciones/ventas/${ventaEditando.value.id}`, {
+        clienteId: payload.clienteId,
+        fecha: payload.fecha,
+        detalles: payload.detalles,
+        observaciones: payload.observaciones,
+      })
+      notify.success('Venta actualizada')
+    } else {
+      await api.post('/operaciones/ventas', payload)
+      notify.success('Venta creada')
+    }
     modalNueva.value = false
+    ventaEditando.value = null
     await fetchVentas()
   } catch (e: any) {
-    notify.error(e?.response?.data?.message ?? 'Error al crear venta')
+    notify.error(e?.response?.data?.message ?? 'Error al guardar venta')
+  } finally {
+    saving.value = false
+  }
+}
+
+function puedeEditarVenta(v: any) {
+  return !v.liquidacionRutaId && v.estado !== 'CANCELADA' && Number(v.totalPagado ?? 0) <= 0
+}
+
+function puedeEliminarVenta(v: any) {
+  return !v.liquidacionRutaId
+}
+
+async function eliminarVenta(v: any) {
+  if (!window.confirm(`Eliminar la venta ${v.numero}?`)) return
+  saving.value = true
+  try {
+    await api.delete(`/operaciones/ventas/${v.id}`)
+    notify.success(`Venta ${v.numero} eliminada`)
+    await fetchVentas()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'No se pudo eliminar la venta')
   } finally {
     saving.value = false
   }

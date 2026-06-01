@@ -62,8 +62,8 @@
           v-if="puedeEditarPedidos"
           class="text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2"
         >
-          Podés <strong>agregar o quitar</strong> pedidos mientras la ruta esté en <strong>Creada</strong> o
-          <strong>Cargada</strong>. Al pulsar <strong>Salir a entregar</strong> ya no se puede modificar el cargue.
+          Podés <strong>agregar o quitar</strong> pedidos mientras la ruta no esté liquidada. Si un pedido ya generó venta,
+          primero corrige la liquidación o elimina la ruta completa.
         </p>
       </section>
 
@@ -167,7 +167,7 @@
       textoConfirm="Eliminar"
       textoCancel="Cancelar"
       :detalles="{ Ruta: ruta?.numero, Trabajador: ruta?.domiciliario?.nombre }"
-      advertencia="Para rutas en entrega, liquidacion o liquidadas usa anular/cerrar segun corresponda."
+      advertencia="Si la ruta esta en liquidacion, tambien se limpiaran ventas, cartera, caja e inventario generados por esa liquidacion."
       @confirm="eliminarRuta"
       @cancel="modalEliminarRuta?.close()"
     />
@@ -245,7 +245,7 @@ const navegandoLiquidacion = ref(false)
 const deleting = ref(false)
 
 const puedeEditarPedidos = computed(() =>
-  ['CREADA', 'CARGADA'].includes(ruta.value?.estado ?? ''),
+  ['CREADA', 'CARGADA', 'EN_ENTREGA', 'EN_LIQUIDACION'].includes(ruta.value?.estado ?? ''),
 )
 
 const acciones = computed(() => {
@@ -278,7 +278,7 @@ async function fetchPedidosPendientes() {
   loadingPendientes.value = true
   try {
     const res = await api.get('/operaciones/pedidos', {
-      params: { estado: 'PENDIENTE', limit: 200 },
+      params: { estado: 'PENDIENTE', soloDisponiblesRuta: 'true', limit: 200 },
     })
     const d = apiResponse.unwrap(res) as any
     const lista = d.items ?? d.data ?? []

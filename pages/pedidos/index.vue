@@ -69,7 +69,7 @@
               <div class="flex gap-2 justify-center flex-wrap">
                 <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded text-xs font-medium transition-colors" @click="verDetalle(p)">Ver</button>
                 <NuxtLink
-                  v-if="p.estado === 'PENDIENTE'"
+                  v-if="['PENDIENTE', 'CARGADO_EN_RUTA'].includes(p.estado)"
                   :to="`/pedidos/${p.id}/edit`"
                   class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded text-xs font-medium transition-colors"
                 >

@@ -184,6 +184,7 @@ async function actualizarPedido() {
   saving.value = true
   try {
     await api.patch(`/operaciones/pedidos/${route.params.id}`, {
+      clienteId: form.clienteId,
       trabajadorId: form.trabajadorId,
       fecha: form.fecha,
       detalles: form.detalles.filter((d) => d.productoId && d.cantidad > 0 && d.precioUnitario > 0),
