@@ -16,7 +16,7 @@
       <p class="text-sm text-blue-800 leading-relaxed">
         Los movimientos de caja se registran automáticamente cuando creas ventas, cobras pagos,
         pagas a trabajadores, registras anticipos o abres/cierras el día. Consulta el estado
-        actual en <NuxtLink to="/operaciones/diario" class="underline font-semibold">Flujo Diario</NuxtLink>.
+        actual en <NuxtLink to="/operaciones/diario" class="underline font-semibold">Gestión de Planta</NuxtLink>.
       </p>
     </div>
 
@@ -82,10 +82,10 @@
           </p>
         </div>
         <div>
-          <p class="text-gray-500">Cierre</p>
+          <p class="text-gray-500">{{ estado.apertura ? 'Cierre' : 'Jornada' }}</p>
           <p class="font-semibold flex items-center gap-2" :class="estado.cierre ? 'text-blue-700' : 'text-gray-400'">
             <component :is="estado.cierre ? CheckCircle : Minus" class="h-4 w-4" />
-            <span>{{ estado.cierre ? 'Cerrado' : 'Pendiente' }}</span>
+            <span>{{ !estado.apertura ? 'Sin Iniciar' : (estado.cierre ? 'Cerrado' : 'Pendiente') }}</span>
           </p>
         </div>
         <div>
@@ -102,7 +102,7 @@
     <div class="flex justify-center">
       <NuxtLink to="/operaciones/diario" class="btn-primary inline-flex items-center gap-2">
         <CalendarDays class="h-4 w-4" />
-        Ir a Flujo Diario
+        Ir a Gestión de Planta
       </NuxtLink>
     </div>
 

@@ -5,7 +5,11 @@
         <h1 class="text-2xl font-bold text-gray-800">Ventas</h1>
         <p class="text-sm text-gray-500">Ventas directas, pagos y saldos pendientes.</p>
       </div>
-      <button class="btn-primary inline-flex items-center justify-center gap-2" @click="abrirNuevaVenta">
+      <button
+        class="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="!jornadaAbierta"
+        @click="abrirNuevaVenta"
+      >
         <Plus :size="16" /> Nueva venta
       </button>
     </div>
@@ -313,6 +317,7 @@ const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
 const moneyInput = useMoneyInput()
+const { jornadaAbierta, fetchEstadoJornada, requireJornadaAbierta } = useJornadaOperativa()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -422,6 +427,7 @@ async function fetchCatalogos() {
 }
 
 function abrirNuevaVenta() {
+  if (!requireJornadaAbierta()) return
   ventaEditando.value = null
   nvForm.clienteId = undefined
   nvForm.fechaVenta = todayISO()
@@ -602,5 +608,7 @@ async function verDetalle(v: any) {
   modalDetalle.value = true
 }
 
-onMounted(fetchVentas)
+onMounted(async () => {
+  await Promise.all([fetchEstadoJornada(), fetchVentas()])
+})
 </script>

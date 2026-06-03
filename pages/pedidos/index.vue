@@ -6,9 +6,14 @@
         <h1 class="text-2xl font-bold text-gray-900">Pedidos</h1>
         <p class="text-sm text-gray-600 mt-1">Gestión y seguimiento de pedidos</p>
       </div>
-      <NuxtLink to="/pedidos/create" class="btn-primary flex items-center gap-2 justify-center sm:justify-start">
+      <button
+        type="button"
+        class="btn-primary flex items-center gap-2 justify-center sm:justify-start disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="!jornadaAbierta"
+        @click="irANuevoPedido"
+      >
         <Plus :size="16" /> Nuevo pedido
-      </NuxtLink>
+      </button>
     </div>
 
     <!-- Filtros Mejorados -->
@@ -131,6 +136,7 @@ const api = useApi()
 const { error, success } = useNotification()
 const apiResponse = useApiResponse()
 const { imprimirPedido } = usePrintTicket()
+const { jornadaAbierta, fetchEstadoJornada, requireJornadaAbierta } = useJornadaOperativa()
 
 const printingId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
@@ -190,6 +196,11 @@ function verDetalle(p: any) {
   navigateTo(`/pedidos/${p.id}`)
 }
 
+function irANuevoPedido() {
+  if (!requireJornadaAbierta()) return
+  navigateTo('/pedidos/create')
+}
+
 function confirmarEliminarPedido(p: any) {
   pedidoAEliminar.value = p
   modalEliminarPedido.value?.open()
@@ -220,5 +231,7 @@ function changePage(delta: number) {
   loadPedidos()
 }
 
-onMounted(loadPedidos)
+onMounted(async () => {
+  await Promise.all([fetchEstadoJornada(), loadPedidos()])
+})
 </script>

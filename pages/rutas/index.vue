@@ -5,7 +5,11 @@
         <h1 class="text-2xl font-bold text-gray-800">Rutas</h1>
         <p class="text-sm text-gray-500">Despachos, entregas y liquidación por trabajador.</p>
       </div>
-      <button class="btn-primary inline-flex items-center justify-center gap-2" @click="abrirModal()">
+      <button
+        class="btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="!jornadaAbierta"
+        @click="abrirModal()"
+      >
         <Plus :size="16" /> Nueva ruta
       </button>
     </div>
@@ -86,8 +90,9 @@
               <div class="flex justify-end gap-2">
                 <button
                   type="button"
-                  class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1"
-                  @click="navigateTo(`/rutas/${r.id}`)"
+                  class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="!jornadaAbierta"
+                  @click="gestionarRuta(r)"
                 >
                   <ArrowRight :size="14" /> Gestionar
                 </button>
@@ -174,6 +179,7 @@ definePageMeta({ middleware: 'auth' })
 const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
+const { jornadaAbierta, fetchEstadoJornada, requireJornadaAbierta } = useJornadaOperativa()
 
 const ESTADOS = ['CREADA', 'CARGADA', 'EN_ENTREGA', 'EN_LIQUIDACION', 'LIQUIDADA', 'ANULADA']
 
@@ -236,11 +242,17 @@ async function fetchTrabajadores() {
 }
 
 function abrirModal() {
+  if (!requireJornadaAbierta()) return
   form.fecha = todayISO()
   form.domiciliarioId = undefined
   form.observaciones = ''
   fetchTrabajadores()
   modalForm.value = true
+}
+
+function gestionarRuta(r: any) {
+  if (!requireJornadaAbierta()) return
+  navigateTo(`/rutas/${r.id}`)
 }
 
 function confirmarEliminarRuta(r: any) {
@@ -284,5 +296,7 @@ async function crearRuta() {
   }
 }
 
-onMounted(fetchRutas)
+onMounted(async () => {
+  await Promise.all([fetchEstadoJornada(), fetchRutas()])
+})
 </script>

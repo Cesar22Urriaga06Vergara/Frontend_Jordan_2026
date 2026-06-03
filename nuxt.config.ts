@@ -14,6 +14,11 @@ export default defineNuxtConfig({
           content: 'Sistema de control interno para Purificadora de Agua JORDAN',
         },
       ],
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/LOGO.png' },
+        { rel: 'shortcut icon', type: 'image/png', href: '/LOGO.png' },
+        { rel: 'apple-touch-icon', href: '/LOGO.png' },
+      ],
     },
   },
 

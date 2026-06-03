@@ -15,8 +15,8 @@
     <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 flex items-start gap-3">
       <Factory class="h-5 w-5 mt-0.5 text-blue-600" />
       <p>
-        La producción pertenece al flujo diario. Para registrarla, abre primero el día en
-        <NuxtLink to="/operaciones/diario" class="underline font-semibold">Flujo Diario</NuxtLink>.
+        La producción se registra desde Gestión de Planta. Para registrarla, abre primero la jornada en
+        <NuxtLink to="/operaciones/diario" class="underline font-semibold">Gestión de Planta</NuxtLink>.
       </p>
     </div>
 
@@ -91,10 +91,10 @@
       v-else-if="!estado.apertura"
     >
       <p class="font-semibold text-gray-700">El día no está abierto</p>
-      <p class="text-gray-500 mb-3 text-sm">Abre el flujo diario antes de registrar producción.</p>
+      <p class="text-gray-500 mb-3 text-sm">Abre Gestión de Planta antes de registrar producción.</p>
       <NuxtLink to="/operaciones/diario" class="btn-primary inline-flex items-center gap-2">
         <CalendarDays class="h-4 w-4" />
-        Ir a Flujo Diario
+        Ir a Gestión de Planta
       </NuxtLink>
     </div>
 

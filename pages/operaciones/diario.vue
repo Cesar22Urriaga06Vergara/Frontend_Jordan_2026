@@ -3,7 +3,7 @@
     <!-- Header con selector de fecha -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">Flujo diario</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Gestión de Planta</h1>
         <p class="text-sm text-gray-500">Apertura, producción, cierre e historial operativo.</p>
       </div>
       <div class="flex items-center gap-2">
@@ -41,16 +41,16 @@
     <div v-if="loadingEstado" class="card text-center text-gray-400 py-8">Cargando estado…</div>
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard label="Apertura" :value="estado.apertura ? 'Registrada' : 'Sin abrir'" :icon="CalendarDays" color="blue" />
-      <StatCard label="Cierre" :value="estado.cierre ? 'Registrado' : 'Pendiente'" :icon="CheckCircle" color="green" />
+      <StatCard :label="jornadaCardLabel" :value="jornadaCardValue" :icon="CheckCircle" color="green" />
       <StatCard label="Pedidos pendientes" :value="String(estado.pedidosPendientes ?? 0)" :icon="ClipboardList" color="orange" />
       <StatCard label="Rutas abiertas" :value="String(estado.rutasAbiertas ?? 0)" :icon="Truck" color="red" />
     </div>
 
     <div class="card space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-gray-700">Apertura del día — {{ fechaSeleccionada }}</h2>
+        <h2 class="font-semibold text-gray-700">Apertura de jornada - {{ fechaSeleccionada }}</h2>
         <span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="estado.abierto ? 'bg-green-100 text-green-700' : (estado.apertura ? 'bg-gray-100 text-gray-700' : 'bg-yellow-100 text-yellow-700')">
-          {{ estado.abierto ? 'Jornada abierta' : (estado.apertura ? 'Jornada cerrada' : 'Sin abrir') }}
+          {{ estado.abierto ? 'Jornada abierta' : (estado.apertura ? 'Jornada cerrada' : 'Jornada: Sin Iniciar') }}
         </span>
       </div>
 
@@ -84,9 +84,9 @@
           </FormField>
           <button class="btn-primary w-full inline-flex items-center justify-center gap-2" :disabled="savingApertura" @click="abrirDia">
             <CalendarDays class="h-4 w-4" />
-            {{ savingApertura ? 'Abriendo…' : 'Abrir día' }}
+            {{ savingApertura ? 'Abriendo…' : 'Abrir jornada' }}
           </button>
-          <p class="text-xs text-gray-500">Al abrir el día se habilitan producción, rutas, ventas y cierre.</p>
+          <p class="text-xs text-gray-500">Al abrir la jornada se habilitan producción, rutas, ventas y cierre.</p>
         </div>
       </div>
 
@@ -253,6 +253,15 @@ const aperturaSaldoInicial = ref(0)
 const produccionItems = ref<{ productoId: number | undefined; cantidad: number }[]>([])
 const cierreInventario = ref<{ productoId: number; nombre: string; cantidadEsperada: number; cantidadContada: number }[]>([])
 const cierreForm = reactive({ saldoContado: 0, observaciones: '' })
+
+const jornadaCardLabel = computed(() => {
+  if (!estado.value.apertura) return 'Jornada'
+  return 'Cierre'
+})
+const jornadaCardValue = computed(() => {
+  if (!estado.value.apertura) return 'Sin Iniciar'
+  return estado.value.cierre ? 'Registrado' : 'Pendiente'
+})
 
 function syncCierreInventario() {
   const inventarios = estado.value?.apertura?.inventariosInicial ?? []

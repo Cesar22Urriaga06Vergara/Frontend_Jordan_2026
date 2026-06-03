@@ -43,7 +43,7 @@
           </NavGroup>
 
           <NavGroup label="Operaciones">
-            <NavItem to="/operaciones/diario" :icon="CalendarDays" label="Flujo Diario" @click="closeSidebarOnMobile" />
+            <NavItem to="/operaciones/diario" :icon="CalendarDays" label="Gestión de Planta" @click="closeSidebarOnMobile" />
             <NavItem to="/pedidos" :icon="ClipboardList" label="Pedidos" @click="closeSidebarOnMobile" />
             <NavItem to="/rutas" :icon="Truck" label="Rutas" @click="closeSidebarOnMobile" />
             <NavItem to="/ventas" :icon="Receipt" label="Ventas" @click="closeSidebarOnMobile" />
@@ -113,7 +113,7 @@
             <div class="flex items-start gap-3">
               <AlertTriangle class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" />
               <div>
-                <p class="text-sm font-semibold">Día abierto sin cierre</p>
+                <p class="text-sm font-semibold">Jornada abierta sin cierre</p>
                 <p class="text-xs text-amber-800">
                   Hay una jornada abierta del {{ formatDate(diaAbiertoPendiente.fecha) }}. Revísala antes de avanzar con otra fecha.
                 </p>
@@ -123,7 +123,7 @@
               :to="{ path: '/operaciones/diario', query: { fecha: diaAbiertoPendiente.fecha } }"
               class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm"
             >
-              Ir al día abierto
+              Ir a liquidar jornada
               <ChevronRight class="h-4 w-4" />
             </NuxtLink>
           </div>
@@ -182,8 +182,8 @@ function resolvePageMeta(path: string): {
   const staticPages: Record<string, { title: string; crumbs: { label: string; href: string }[] }> = {
     '/': { title: 'Dashboard', crumbs: [{ label: 'Dashboard', href: '/' }] },
     '/operaciones/diario': {
-      title: 'Flujo Diario',
-      crumbs: [{ label: 'Flujo Diario', href: '/operaciones/diario' }],
+      title: 'Gestión de Planta',
+      crumbs: [{ label: 'Gestión de Planta', href: '/operaciones/diario' }],
     },
     '/pedidos': { title: 'Pedidos', crumbs: [{ label: 'Pedidos', href: '/pedidos' }] },
     '/rutas': { title: 'Rutas', crumbs: [{ label: 'Rutas', href: '/rutas' }] },

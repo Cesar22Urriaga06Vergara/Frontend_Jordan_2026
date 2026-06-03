@@ -16,7 +16,7 @@
       <Boxes class="h-5 w-5 mt-0.5 text-blue-600" />
       <p>
         El inventario se mueve con producción, despachos y cierre del día. Usa
-        <NuxtLink to="/operaciones/diario" class="underline font-semibold">Flujo Diario</NuxtLink>
+        <NuxtLink to="/operaciones/diario" class="underline font-semibold">Gestión de Planta</NuxtLink>
         para abrir el día o registrar producción.
       </p>
     </div>

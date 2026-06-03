@@ -1,5 +1,18 @@
 <template>
+  <button
+    v-if="disabled"
+    type="button"
+    class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-gray-200 bg-gray-50 text-center opacity-60 cursor-not-allowed transition-all duration-150"
+    @click="$emit('blocked')"
+  >
+    <span class="text-3xl group-hover:scale-110 transition-transform">
+      <component v-if="isComponentIcon" :is="icon" class="h-6 w-6" />
+      <span v-else>{{ icon }}</span>
+    </span>
+    <span class="text-xs font-semibold text-gray-500 transition-colors">{{ label }}</span>
+  </button>
   <NuxtLink
+    v-else
     :to="to"
     class="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition-all duration-150 text-center group"
   >
@@ -15,6 +28,7 @@
 import { computed } from 'vue'
 import type { Component } from 'vue'
 
-const props = defineProps<{ to: string; icon?: Component | string; label: string }>()
+const props = defineProps<{ to: string; icon?: Component | string; label: string; disabled?: boolean }>()
+defineEmits<{ blocked: [] }>()
 const isComponentIcon = computed(() => props.icon && typeof props.icon !== 'string')
 </script>

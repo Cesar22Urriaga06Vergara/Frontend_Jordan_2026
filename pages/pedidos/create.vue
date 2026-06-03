@@ -98,6 +98,7 @@ definePageMeta({ middleware: 'auth' })
 const api = useApi()
 const apiResponse = useApiResponse()
 const { error, success } = useNotification()
+const { fetchEstadoJornada, requireJornadaAbierta } = useJornadaOperativa()
 
 const saving = ref(false)
 const clientes = ref<any[]>([])
@@ -172,5 +173,12 @@ async function crearPedido() {
   }
 }
 
-onMounted(loadCatalogos)
+onMounted(async () => {
+  await fetchEstadoJornada()
+  if (!requireJornadaAbierta()) {
+    navigateTo('/pedidos')
+    return
+  }
+  await loadCatalogos()
+})
 </script>
