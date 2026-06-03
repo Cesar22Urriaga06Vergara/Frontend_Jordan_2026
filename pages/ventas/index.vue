@@ -147,7 +147,7 @@
         <div>
           <h2 class="font-bold text-gray-800">{{ ventaEditando ? 'Editar venta' : 'Nueva venta' }}</h2>
           <p class="text-sm text-gray-500 mt-1">
-            {{ ventaEditando ? ventaEditando.numero : 'Selecciona cliente, productos y pago inicial si aplica.' }}
+            {{ ventaEditando ? ventaEditando.numero : 'Selecciona cliente y productos. El pago se registra despues.' }}
           </p>
         </div>
 
@@ -160,15 +160,6 @@
           </FormField>
           <FormField label="Fecha venta *" :error="nvErrors.fechaVenta">
             <input v-model="nvForm.fechaVenta" type="date" class="form-input" />
-          </FormField>
-          <FormField v-if="!ventaEditando" label="Monto pagado ($)">
-            <input v-model.number="nvForm.montoPagado" class="form-input" type="number" min="0" />
-          </FormField>
-          <FormField v-if="!ventaEditando" label="Forma de pago">
-            <select v-model="nvForm.formaPago" class="form-input">
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
-            </select>
           </FormField>
           <FormField label="Notas" class="col-span-2">
             <textarea v-model="nvForm.notas" rows="2" class="form-input resize-none" />
@@ -221,7 +212,7 @@
       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       @click.self="modalPago = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
         <div>
           <h2 class="font-bold text-gray-800">Registrar pago</h2>
           <p class="text-sm text-gray-500 mt-1">
@@ -229,15 +220,25 @@
           </p>
         </div>
 
-        <FormField label="Monto *">
-          <input v-model.number="pagoForm.monto" class="form-input" type="number" min="0" />
-        </FormField>
         <FormField label="Forma de pago">
-          <select v-model="pagoForm.formaPago" class="form-input">
+          <select v-model="pagoForm.formaPago" class="form-input" @change="onFormaPagoChange">
             <option value="EFECTIVO">Efectivo</option>
             <option value="TRANSFERENCIA">Transferencia</option>
+            <option value="AMBOS">Efectivo y transferencia</option>
           </select>
         </FormField>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FormField v-if="pagoForm.formaPago === 'EFECTIVO' || pagoForm.formaPago === 'AMBOS'" label="Efectivo *">
+            <input v-model.number="pagoForm.montoEfectivo" class="form-input" type="number" min="0" step="1" @blur="moneyInput.handleMoneyBlur" />
+          </FormField>
+          <FormField v-if="pagoForm.formaPago === 'TRANSFERENCIA' || pagoForm.formaPago === 'AMBOS'" label="Transferencia *">
+            <input v-model.number="pagoForm.montoTransferencia" class="form-input" type="number" min="0" step="1" @blur="moneyInput.handleMoneyBlur" />
+          </FormField>
+        </div>
+        <div class="rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm flex items-center justify-between gap-3">
+          <span class="text-gray-500">Total pago</span>
+          <strong class="text-gray-800">{{ formatCurrency(totalPagoForm) }}</strong>
+        </div>
         <FormField label="Referencia">
           <input v-model="pagoForm.referencia" class="form-input" type="text" />
         </FormField>
@@ -247,7 +248,7 @@
 
         <div class="flex justify-end gap-2 pt-2">
           <button class="btn-secondary" @click="modalPago = false">Cancelar</button>
-          <button class="btn-primary" :disabled="saving || !pagoForm.monto" @click="registrarPago">
+          <button class="btn-primary" :disabled="saving || totalPagoForm <= 0" @click="registrarPago">
             {{ saving ? 'Guardando…' : 'Registrar' }}
           </button>
         </div>
@@ -311,6 +312,7 @@ definePageMeta({ middleware: 'auth' })
 const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
+const moneyInput = useMoneyInput()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -332,8 +334,6 @@ const ventaEditando = ref<any>(null)
 const nvForm = reactive({
   clienteId: undefined as number | undefined,
   fechaVenta: todayISO(),
-  montoPagado: 0,
-  formaPago: 'EFECTIVO',
   notas: '',
   detalles: [] as { productoId: number | undefined; cantidad: number; precioUnitario: number }[],
 })
@@ -361,7 +361,22 @@ const totalSaldoListado = computed(() =>
 // Pago
 const modalPago = ref(false)
 const ventaPago = ref<any>(null)
-const pagoForm = reactive({ monto: 0, formaPago: 'EFECTIVO', referencia: '', notas: '' })
+const pagoForm = reactive({
+  formaPago: 'EFECTIVO',
+  montoEfectivo: 0,
+  montoTransferencia: 0,
+  referencia: '',
+  notas: '',
+})
+const totalPagoForm = computed(() => {
+  const efectivo = pagoForm.formaPago === 'EFECTIVO' || pagoForm.formaPago === 'AMBOS'
+    ? Number(pagoForm.montoEfectivo ?? 0)
+    : 0
+  const transferencia = pagoForm.formaPago === 'TRANSFERENCIA' || pagoForm.formaPago === 'AMBOS'
+    ? Number(pagoForm.montoTransferencia ?? 0)
+    : 0
+  return efectivo + transferencia
+})
 
 // Detalle
 const modalDetalle = ref(false)
@@ -410,8 +425,6 @@ function abrirNuevaVenta() {
   ventaEditando.value = null
   nvForm.clienteId = undefined
   nvForm.fechaVenta = todayISO()
-  nvForm.montoPagado = 0
-  nvForm.formaPago = 'EFECTIVO'
   nvForm.notas = ''
   nvForm.detalles = []
   fetchCatalogos()
@@ -427,8 +440,6 @@ async function abrirEditarVenta(v: any) {
     ventaEditando.value = venta
     nvForm.clienteId = venta.clienteId
     nvForm.fechaVenta = venta.fecha?.split('T')[0] ?? todayISO()
-    nvForm.montoPagado = 0
-    nvForm.formaPago = 'EFECTIVO'
     nvForm.notas = ''
     nvForm.detalles = (venta.detalles ?? []).map((d: any) => ({
       productoId: d.productoId,
@@ -456,11 +467,6 @@ function onClienteChange() {
 
 async function crearVenta() {
   if (!validarNuevaVenta()) return
-  if (!ventaEditando.value && nvForm.montoPagado < 0) { notify.error('El monto pagado no puede ser negativo'); return }
-  if (!ventaEditando.value && nvForm.montoPagado > totalNueva.value) {
-    notify.error('El monto pagado inicial no puede superar el total de la venta')
-    return
-  }
   saving.value = true
   try {
     const detallesValidos = nvForm.detalles.filter(d => d.productoId && d.cantidad > 0 && d.precioUnitario > 0)
@@ -473,10 +479,6 @@ async function crearVenta() {
         precioUnitario: d.precioUnitario,
       })),
       observaciones: nvForm.notas || undefined,
-    }
-    if (!ventaEditando.value && nvForm.montoPagado > 0) {
-      payload.montoPagado = nvForm.montoPagado
-      payload.tipoPago = nvForm.formaPago
     }
     if (ventaEditando.value) {
       await api.patch(`/operaciones/ventas/${ventaEditando.value.id}`, {
@@ -524,20 +526,39 @@ async function eliminarVenta(v: any) {
 
 function abrirPago(v: any) {
   ventaPago.value = v
-  pagoForm.monto = v.saldoPendiente
   pagoForm.formaPago = 'EFECTIVO'
+  pagoForm.montoEfectivo = Number(v.saldoPendiente ?? 0)
+  pagoForm.montoTransferencia = 0
   pagoForm.referencia = ''
   pagoForm.notas = ''
   modalPago.value = true
 }
 
+function onFormaPagoChange() {
+  const saldo = Number(ventaPago.value?.saldoPendiente ?? 0)
+  if (pagoForm.formaPago === 'EFECTIVO') {
+    pagoForm.montoEfectivo = saldo
+    pagoForm.montoTransferencia = 0
+  } else if (pagoForm.formaPago === 'TRANSFERENCIA') {
+    pagoForm.montoEfectivo = 0
+    pagoForm.montoTransferencia = saldo
+  } else if (pagoForm.formaPago === 'AMBOS') {
+    pagoForm.montoEfectivo = Math.min(Number(pagoForm.montoEfectivo ?? 0), saldo)
+    pagoForm.montoTransferencia = Math.max(0, saldo - pagoForm.montoEfectivo)
+  }
+}
+
 async function registrarPago() {
   if (!ventaPago.value) return
-  if (pagoForm.monto <= 0) {
+  if (totalPagoForm.value <= 0) {
     notify.error('El monto del pago debe ser mayor a cero')
     return
   }
-  if (pagoForm.monto > Number(ventaPago.value.saldoPendiente ?? 0)) {
+  if (pagoForm.formaPago === 'AMBOS' && (pagoForm.montoEfectivo <= 0 || pagoForm.montoTransferencia <= 0)) {
+    notify.error('Indica monto en efectivo y monto por transferencia')
+    return
+  }
+  if (totalPagoForm.value > Number(ventaPago.value.saldoPendiente ?? 0)) {
     notify.error('El pago no puede superar el saldo pendiente')
     return
   }
@@ -546,7 +567,13 @@ async function registrarPago() {
   try {
     await api.post(`/operaciones/ventas/${ventaPago.value.id}/pagos`, {
       tipo: pagoForm.formaPago,
-      monto: pagoForm.monto,
+      monto: totalPagoForm.value,
+      montoEfectivo: pagoForm.formaPago === 'EFECTIVO' || pagoForm.formaPago === 'AMBOS'
+        ? pagoForm.montoEfectivo
+        : undefined,
+      montoTransferencia: pagoForm.formaPago === 'TRANSFERENCIA' || pagoForm.formaPago === 'AMBOS'
+        ? pagoForm.montoTransferencia
+        : undefined,
       referencia: pagoForm.referencia || undefined,
       observaciones: pagoForm.notas || undefined,
     })
