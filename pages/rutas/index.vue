@@ -124,10 +124,10 @@
     <!-- Modal nueva ruta -->
     <div
       v-if="modalForm"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalForm = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-lg p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <div>
           <h2 class="font-bold text-gray-800">Nueva ruta</h2>
           <p class="text-sm text-gray-500 mt-1">Asigna un trabajador y luego agrega los pedidos pendientes.</p>

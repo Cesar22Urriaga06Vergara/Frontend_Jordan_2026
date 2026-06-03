@@ -3,7 +3,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Clientes</h1>
-        <p class="text-sm text-gray-600 mt-1">Gestión de información de clientes</p>
+        <p class="text-sm text-gray-600 mt-1">Información comercial, contacto, dirección y precios especiales.</p>
       </div>
       <NuxtLink to="/catalogos/clientes/create" class="btn-primary flex items-center gap-2 justify-center sm:justify-start">
         <Plus :size="16" /> Nuevo cliente
@@ -18,7 +18,7 @@
           <div class="relative">
             <input 
               v-model="searchQuery" 
-              placeholder="Nombre, código, teléfono..." 
+              placeholder="Nombre, código, teléfono, dirección..."
               class="form-input w-full pl-10" 
             />
             <Search class="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -54,6 +54,7 @@
             <th class="px-4 py-4 font-bold">Código / Nombre</th>
             <th class="px-4 py-4 font-bold">Tipo</th>
             <th class="px-4 py-4 font-bold">Teléfono</th>
+            <th class="px-4 py-4 font-bold">Dirección</th>
             <th class="px-4 py-4 font-bold">Documento</th>
             <th class="px-4 py-4 font-bold">Estado</th>
             <th class="px-4 py-4 font-bold">Acciones</th>
@@ -61,10 +62,10 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400">Cargando...</td>
           </tr>
           <tr v-else-if="!clientes.length">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo cliente.</td>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo cliente.</td>
           </tr>
           <tr v-for="c in clientes" :key="c.id" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
             <td class="px-4 py-4">
@@ -75,6 +76,15 @@
               <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">{{ c.tipo }}</span>
             </td>
             <td class="px-4 py-4 text-gray-600">{{ c.telefono ?? '—' }}</td>
+            <td class="px-4 py-4 text-gray-600 min-w-56">
+              <div class="flex items-start gap-2">
+                <MapPin class="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-300" />
+                <div>
+                  <p>{{ c.direccion || 'Sin dirección' }}</p>
+                  <p v-if="c.vereda" class="text-xs text-gray-400">{{ c.vereda }}</p>
+                </div>
+              </div>
+            </td>
             <td class="px-4 py-4 text-gray-600">
               <template v-if="c.nit">
                 <span class="text-xs text-gray-400 mr-1">NIT</span>{{ c.nit }}
@@ -123,8 +133,8 @@
       </div>
     </div>
 
-    <div v-if="modalPrecios" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="closeModalPrecios()">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div v-if="modalPrecios" class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4" @click.self="closeModalPrecios()">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-2xl p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <h2 class="text-lg font-bold text-gray-800">Precios especiales — {{ clientePrecios?.nombre }}</h2>
 
         <table class="w-full text-sm mb-4">
@@ -147,12 +157,12 @@
 
         <div class="border-t pt-4 space-y-3">
           <h3 class="font-semibold text-sm text-gray-700">Agregar / actualizar precio</h3>
-          <div class="flex gap-2">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_auto]">
             <select v-model="nuevoProductoId" class="form-input">
               <option value="">Seleccionar producto…</option>
               <option v-for="prod in productos" :key="prod.id" :value="prod.id">{{ prod.nombre }}</option>
             </select>
-            <input v-model.number="nuevoPrecio" class="form-input w-36" type="number" min="0" placeholder="Precio" />
+            <input v-model.number="nuevoPrecio" class="form-input" type="number" min="0" placeholder="Precio" />
             <button class="btn-primary whitespace-nowrap" :disabled="!nuevoProductoId || !nuevoPrecio" @click="guardarPrecio">Guardar</button>
           </div>
         </div>
@@ -165,8 +175,8 @@
 
     <!-- Modal confirmación eliminar cliente -->
     <Teleport to="body">
-      <div v-if="showConfirmDeleteCliente" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+      <div v-if="showConfirmDeleteCliente" class="fixed inset-0 bg-black/40 z-50 flex items-stretch justify-center p-0 sm:items-center sm:p-4">
+        <div class="bg-white rounded-none shadow-2xl w-full max-w-sm p-6 sm:rounded-xl">
           <h3 class="font-semibold text-gray-800 mb-2">¿Eliminar cliente?</h3>
           <p class="text-sm text-gray-600 mb-5">
             ¿Seguro que deseas eliminar a <strong>{{ clienteAEliminar?.nombre }}</strong>?
@@ -197,7 +207,7 @@
 
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/formats'
-import { CheckCircle, Edit, Eye, Plus, Search, Trash2, XCircle } from 'lucide-vue-next'
+import { CheckCircle, Edit, Eye, MapPin, Plus, Search, Trash2, XCircle } from 'lucide-vue-next'
 import { usePagination } from '~/composables/usePagination'
 import { useModal } from '~/composables/useModal'
 import { useApi } from '~/composables/useApi'

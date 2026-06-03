@@ -119,7 +119,7 @@
             :disabled="!puedeOperar"
             @blocked="mostrarBloqueoOperativo"
           />
-          <QuickLink to="/trabajadores" :icon="BriefcaseBusiness" label="Trabajadores" />
+          <QuickLink to="/trabajadores" :icon="BriefcaseBusiness" label="Labores y pagos" />
         </div>
 
         <div v-if="!puedeOperar" class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">

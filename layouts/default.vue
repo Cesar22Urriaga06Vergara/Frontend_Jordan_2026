@@ -55,8 +55,8 @@
             <NavItem to="/inventario" :icon="Boxes" label="Inventario" @click="closeSidebarOnMobile" />
           </NavGroup>
 
-          <NavGroup label="Trabajadores">
-            <NavItem to="/trabajadores" :icon="BriefcaseBusiness" label="Trabajadores" @click="closeSidebarOnMobile" />
+          <NavGroup label="Personal y Caja">
+            <NavItem to="/trabajadores" :icon="BriefcaseBusiness" label="Labores y Pagos" @click="closeSidebarOnMobile" />
             <NavItem to="/operaciones/caja" :icon="CreditCard" label="Caja" @click="closeSidebarOnMobile" />
           </NavGroup>
 
@@ -202,8 +202,11 @@ function resolvePageMeta(path: string): {
     },
     '/inventario': { title: 'Inventario', crumbs: [{ label: 'Inventario', href: '/inventario' }] },
     '/trabajadores': {
-      title: 'Trabajadores',
-      crumbs: [{ label: 'Trabajadores', href: '/trabajadores' }],
+      title: 'Labores y Pagos',
+      crumbs: [
+        { label: 'Personal y Caja', href: '/trabajadores' },
+        { label: 'Labores y Pagos', href: '/trabajadores' },
+      ],
     },
     '/catalogos/productos': {
       title: 'Catálogo de Productos',

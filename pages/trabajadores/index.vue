@@ -2,8 +2,8 @@
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">Trabajadores</h1>
-        <p class="text-sm text-gray-500">Labores, pagos, anticipos y saldos pendientes.</p>
+        <h1 class="text-2xl font-bold text-gray-800">Labores y Pagos</h1>
+        <p class="text-sm text-gray-500">Registro operativo de labores, pagos, anticipos y saldos pendientes.</p>
       </div>
       <button class="btn-secondary inline-flex items-center gap-2" @click="fetchTrabajadores">
         <RefreshCw class="h-4 w-4" />
@@ -17,7 +17,7 @@
           <UsersRound class="h-5 w-5" />
         </div>
         <div>
-          <p class="text-sm text-gray-500">Trabajadores activos</p>
+          <p class="text-sm text-gray-500">Personal activo</p>
           <p class="text-2xl font-bold text-gray-800">{{ trabajadoresActivos }}</p>
         </div>
       </div>
@@ -59,7 +59,7 @@
       </button>
     </div>
 
-    <!-- TAB: Resumen trabajadores -->
+    <!-- TAB: Resumen de personal -->
     <div v-if="tabActivo === 'resumen'" class="space-y-4">
       <div class="card overflow-x-auto p-0">
         <table class="w-full text-sm">
@@ -253,10 +253,10 @@
     <!-- Modal pagar trabajador -->
     <div
       v-if="modalPagar"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalPagar = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <h2 class="font-bold text-gray-800">Pagar a {{ trabSeleccionado?.nombre }}</h2>
         <p class="text-sm text-gray-500">Saldo: {{ formatCurrency(trabSeleccionado?.saldoTotal ?? 0) }}</p>
 
@@ -279,10 +279,10 @@
     <!-- Modal anticipo -->
     <div
       v-if="modalAnticipo"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalAnticipo = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <h2 class="font-bold text-gray-800">Anticipo / Préstamo — {{ trabSeleccionado?.nombre }}</h2>
 
         <FormField label="Tipo">
@@ -310,10 +310,10 @@
     <!-- Modal abono deuda -->
     <div
       v-if="modalAbono"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalAbono = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <h2 class="font-bold text-gray-800">Abonar deuda</h2>
         <p class="text-sm text-gray-500">
           Saldo pendiente: {{ formatCurrency(anticipoSeleccionado?.saldoPendiente ?? anticipoSeleccionado?.saldo ?? 0) }}

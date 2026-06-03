@@ -4,7 +4,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Pedidos</h1>
-        <p class="text-sm text-gray-600 mt-1">Gestión y seguimiento de pedidos</p>
+        <p class="text-sm text-gray-600 mt-1">Seguimiento operativo con cliente, dirección, trabajador y productos.</p>
       </div>
       <button
         type="button"
@@ -16,7 +16,7 @@
       </button>
     </div>
 
-    <!-- Filtros Mejorados -->
+    <!-- Filtros -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 space-y-3">
       <div class="flex gap-3 flex-wrap items-end">
         <div class="flex-1 min-w-40">
@@ -48,12 +48,12 @@
         <thead class="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-300">
           <tr class="text-center text-gray-700 text-xs uppercase tracking-wide">
             <th class="px-4 py-4 font-bold">Número</th>
-            <th class="px-4 py-4 font-bold">Cliente</th>
+            <th class="px-4 py-4 font-bold">Cliente / Dirección</th>
             <th class="px-4 py-4 font-bold">Trabajador</th>
             <th class="px-4 py-4 font-bold">Fecha</th>
             <th class="px-4 py-4 font-bold">Estado</th>
-            <th class="px-4 py-4 font-bold">Items</th>
-            <th class="px-4 py-4 font-bold">Acción</th>
+            <th class="px-4 py-4 font-bold">Productos</th>
+            <th class="px-4 py-4 font-bold">Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -64,12 +64,21 @@
             <td colspan="7" class="py-8 text-center text-gray-400">Sin resultados. Intenta ajustar los filtros o crear un nuevo pedido.</td>
           </tr>
           <tr v-for="p in pedidos" :key="p.id" class="border-b border-gray-100 hover:bg-blue-50 transition-colors">
-            <td class="px-4 py-4 font-mono text-xs text-gray-500">{{ p.numero }}</td>
-            <td class="px-4 py-4 font-semibold text-gray-900">{{ p.cliente?.nombre }}</td>
+            <td class="px-4 py-4 font-mono text-xs text-gray-500 whitespace-nowrap">{{ p.numero }}</td>
+            <td class="px-4 py-4 min-w-64">
+              <p class="font-semibold text-gray-900">{{ p.cliente?.nombre ?? 'Sin cliente' }}</p>
+              <p class="mt-1 flex items-start gap-1.5 text-xs text-gray-500">
+                <MapPin class="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
+                <span>{{ direccionPedido(p) }}</span>
+              </p>
+            </td>
             <td class="px-4 py-4 text-gray-700">{{ p.trabajador?.nombre ?? '-' }}</td>
             <td class="px-4 py-4 text-gray-700">{{ formatDate(p.fecha) }}</td>
             <td class="px-4 py-4"><EstadoBadge :estado="p.estado" /></td>
-            <td class="px-4 py-4 text-right text-gray-700 font-medium">{{ p.detalles?.length ?? 0 }}</td>
+            <td class="px-4 py-4 text-gray-700 min-w-48">
+              <p class="font-medium">{{ resumenProductos(p) }}</p>
+              <p class="text-xs text-gray-400">{{ p.detalles?.length ?? 0 }} línea(s)</p>
+            </td>
             <td class="px-4 py-4 text-center">
               <div class="flex gap-2 justify-center flex-wrap">
                 <button class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded text-xs font-medium transition-colors" @click="verDetalle(p)">Ver</button>
@@ -128,7 +137,7 @@
 
 <script setup lang="ts">
 import { formatDate } from '~/utils/formats'
-import { Plus, Printer, Trash2 } from 'lucide-vue-next'
+import { MapPin, Plus, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -194,6 +203,22 @@ async function imprimir(p: any) {
 
 function verDetalle(p: any) {
   navigateTo(`/pedidos/${p.id}`)
+}
+
+function direccionPedido(p: any) {
+  return p.cliente?.direccion || p.direccionEntrega || p.direccion || 'Sin dirección registrada'
+}
+
+function resumenProductos(p: any) {
+  const detalles = Array.isArray(p.detalles) ? p.detalles : []
+  if (!detalles.length) return 'Sin productos'
+  const nombres = detalles.slice(0, 2).map((d: any) => {
+    const nombre = d.producto?.nombre ?? d.productoNombre ?? `Producto ${d.productoId ?? ''}`.trim()
+    const cantidad = Number(d.cantidad ?? 0)
+    return cantidad > 0 ? `${cantidad} ${nombre}` : nombre
+  })
+  const faltantes = detalles.length - nombres.length
+  return faltantes > 0 ? `${nombres.join(', ')} +${faltantes}` : nombres.join(', ')
 }
 
 function irANuevoPedido() {

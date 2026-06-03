@@ -2,11 +2,11 @@
   <Teleport to="body">
     <div
       v-if="isVisible"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      class="fixed inset-0 z-50 flex items-stretch justify-center bg-black/50 p-0 sm:items-center sm:p-4"
       @click.self="cancel()"
     >
-      <div class="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl">
-        <div class="bg-red-600 p-6">
+      <div class="flex w-full max-w-md flex-col overflow-hidden rounded-none bg-white shadow-xl sm:max-h-[90vh] sm:rounded-lg">
+        <div class="bg-red-600 p-5 sm:p-6">
           <div class="flex items-start gap-4">
             <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/20">
               <AlertTriangle class="h-6 w-6 text-white" />
@@ -22,7 +22,7 @@
           </div>
         </div>
 
-        <div class="p-6">
+        <div class="flex-1 overflow-y-auto p-5 sm:p-6">
           <div v-if="detalles" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4">
             <div
               v-for="(valor, clave, idx) in detalles"
@@ -40,7 +40,7 @@
           </p>
         </div>
 
-        <div class="flex justify-end gap-3 border-t border-gray-200 bg-gray-50 p-4">
+        <div class="flex flex-col-reverse gap-2 border-t border-gray-200 bg-gray-50 p-4 sm:flex-row sm:justify-end sm:gap-3">
           <button
             :disabled="isLoading"
             class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
@@ -50,7 +50,7 @@
           </button>
           <button
             :disabled="isLoading"
-            class="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+            class="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
             @click="confirm()"
           >
             <span

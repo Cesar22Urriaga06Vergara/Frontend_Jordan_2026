@@ -144,14 +144,14 @@
     <!-- Modal nueva venta -->
     <div
       v-if="modalNueva"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalNueva = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-3xl p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <div>
           <h2 class="font-bold text-gray-800">{{ ventaEditando ? 'Editar venta' : 'Nueva venta' }}</h2>
           <p class="text-sm text-gray-500 mt-1">
-            {{ ventaEditando ? ventaEditando.numero : 'Selecciona cliente y productos. El pago se registra despues.' }}
+            {{ ventaEditando ? ventaEditando.numero : 'Selecciona cliente y productos. El pago se registra después.' }}
           </p>
         </div>
 
@@ -165,7 +165,7 @@
           <FormField label="Fecha venta *" :error="nvErrors.fechaVenta">
             <input v-model="nvForm.fechaVenta" type="date" class="form-input" />
           </FormField>
-          <FormField label="Notas" class="col-span-2">
+          <FormField label="Notas" class="sm:col-span-2">
             <textarea v-model="nvForm.notas" rows="2" class="form-input resize-none" />
           </FormField>
         </div>
@@ -183,14 +183,14 @@
           <div
             v-for="(d, i) in nvForm.detalles"
             :key="i"
-            class="flex gap-2 mb-2 items-start"
+            class="grid grid-cols-1 gap-2 mb-2 items-start sm:grid-cols-[1fr_88px_128px_28px]"
           >
-            <select v-model="d.productoId" class="form-input flex-1" @change="onProductoSelect(d)">
+            <select v-model="d.productoId" class="form-input" @change="onProductoSelect(d)">
               <option :value="undefined">Seleccionar…</option>
               <option v-for="p in productos" :key="p.id" :value="p.id">{{ p.nombre }}</option>
             </select>
-            <input v-model.number="d.cantidad" class="form-input w-20" type="number" min="1" placeholder="Cant." />
-            <input v-model.number="d.precioUnitario" class="form-input w-28" type="number" min="0" placeholder="Precio" />
+            <input v-model.number="d.cantidad" class="form-input" type="number" min="1" placeholder="Cant." />
+            <input v-model.number="d.precioUnitario" class="form-input" type="number" min="0" placeholder="Precio" />
             <button class="text-red-400 hover:text-red-600 mt-2 text-lg leading-none" @click="nvForm.detalles.splice(i, 1)">×</button>
           </div>
           <p v-if="nvErrors.detalles" class="text-xs text-red-600 mt-1">{{ nvErrors.detalles }}</p>
@@ -213,10 +213,10 @@
     <!-- Modal registrar pago -->
     <div
       v-if="modalPago"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalPago = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-lg p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <div>
           <h2 class="font-bold text-gray-800">Registrar pago</h2>
           <p class="text-sm text-gray-500 mt-1">
@@ -262,10 +262,10 @@
     <!-- Modal detalle venta -->
     <div
       v-if="modalDetalle && ventaDetalle"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalDetalle = false"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-2xl p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between">
           <h2 class="font-bold text-gray-800">{{ ventaDetalle.numero }}</h2>
           <EstadoBadge :estado="ventaDetalle.estado" />
