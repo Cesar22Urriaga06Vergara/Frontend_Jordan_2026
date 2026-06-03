@@ -1,53 +1,40 @@
 <template>
-  <div>
-    <div
-      v-if="diaAbiertoPendiente && !diaAbiertoPendiente.esFechaActual"
-      class="mb-6 rounded-lg border-2 border-amber-300 bg-amber-50 p-5 shadow-sm"
+  <div class="space-y-6">
+    <section
+      class="rounded-lg border p-5 shadow-sm"
+      :class="operationalPanel.wrapperClass"
     >
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="flex items-start gap-3">
-          <AlertTriangle class="mt-0.5 h-6 w-6 flex-shrink-0 text-amber-700" />
-          <div>
-            <p class="text-base font-bold text-amber-950">
-              ⚠️ Atención: La jornada del {{ formatDate(diaAbiertoPendiente.fecha) }} quedó abierta.
-            </p>
-            <p class="mt-1 text-sm text-amber-800">
-              Cierra esta jornada antes de registrar pedidos, rutas o ventas.
-            </p>
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-start gap-4">
+          <div
+            class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg"
+            :class="operationalPanel.iconClass"
+          >
+            <component :is="operationalPanel.icon" class="h-6 w-6" />
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="operationalPanel.badgeClass">
+                {{ operationalPanel.badge }}
+              </span>
+              <span class="text-sm text-gray-500">{{ todayLabel }}</span>
+            </div>
+            <h2 class="mt-2 text-xl font-bold text-gray-900">{{ operationalPanel.title }}</h2>
+            <p class="mt-1 max-w-2xl text-sm text-gray-600">{{ operationalPanel.description }}</p>
           </div>
         </div>
+
         <NuxtLink
-          :to="{ path: '/operaciones/diario', query: { fecha: diaAbiertoPendiente.fecha } }"
+          :to="operationalPanel.to"
           class="btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap"
         >
-          <CalendarDays class="h-4 w-4" />
-          Ir a Liquidar Día Anterior
+          <component :is="operationalPanel.actionIcon" class="h-4 w-4" />
+          {{ operationalPanel.actionLabel }}
         </NuxtLink>
       </div>
-    </div>
+    </section>
 
-    <div
-      v-else-if="!loadingEstado && estadoDia && !estadoDia.apertura"
-      class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-5 shadow-sm"
-    >
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p class="text-base font-bold text-blue-950">Jornada: Sin Iniciar</p>
-          <p class="mt-1 text-sm text-blue-800">
-            Abre la Gestión de Planta para habilitar pedidos, rutas y ventas.
-          </p>
-        </div>
-        <NuxtLink
-          :to="{ path: '/operaciones/diario', query: { fecha: today, abrir: '1' } }"
-          class="btn-primary inline-flex items-center justify-center gap-2 whitespace-nowrap"
-        >
-          <Rocket class="h-4 w-4" />
-          Abrir Jornada de Hoy
-        </NuxtLink>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
         v-for="card in statCards"
         :key="card.label"
@@ -59,77 +46,86 @@
       />
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="bg-white rounded-lg shadow-sm p-5">
-        <h2 class="font-semibold text-gray-700 mb-4">Estado de jornada - {{ todayLabel }}</h2>
-        <div
-          v-if="diaAbiertoPendiente && !diaAbiertoPendiente.esFechaActual"
-          class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3"
-        >
-          <div class="flex items-start gap-2">
-            <AlertTriangle class="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700" />
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+      <section class="card">
+        <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase text-gray-400">Control de jornada</p>
+            <h2 class="mt-1 font-semibold text-gray-800">Estado operativo de hoy</h2>
+          </div>
+          <NuxtLink
+            to="/operaciones/diario"
+            class="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline"
+          >
+            Ver Gestión de Planta
+            <ChevronRight class="h-4 w-4" />
+          </NuxtLink>
+        </div>
+
+        <div v-if="loadingEstado" class="text-sm text-gray-400">Cargando estado...</div>
+        <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div
+            v-for="item in statusChecks"
+            :key="item.label"
+            class="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
+          >
+            <div
+              class="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+              :class="statusToneClass(item.tone).icon"
+            >
+              <component :is="item.icon" class="h-4 w-4" />
+            </div>
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-amber-900">
-                Jornada abierta: {{ formatDate(diaAbiertoPendiente.fecha) }}
-              </p>
-              <NuxtLink
-                :to="{ path: '/operaciones/diario', query: { fecha: diaAbiertoPendiente.fecha } }"
-                class="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:underline"
-              >
-                Ir a liquidar jornada
-                <ChevronRight class="h-3.5 w-3.5" />
-              </NuxtLink>
+              <p class="text-sm font-semibold text-gray-800">{{ item.label }}</p>
+              <p class="mt-0.5 text-xs" :class="statusToneClass(item.tone).text">{{ item.detail }}</p>
             </div>
           </div>
         </div>
-        <div v-if="loadingEstado" class="text-gray-400 text-sm">Cargando...</div>
-        <div v-else class="space-y-3">
-          <StatusRow label="Apertura registrada" :ok="estadoDia?.apertura != null" />
-          <StatusRow label="Rutas liquidadas" :ok="estadoDia?.rutasAbiertas === 0" />
-          <StatusRow
-            label="Pedidos pendientes"
-            :ok="estadoDia?.pedidosPendientes === 0"
-            :detail="estadoDia?.pedidosPendientes > 0 ? `(${estadoDia.pedidosPendientes} pendientes)` : ''"
-          />
-          <StatusRow :label="jornadaStatusLabel" :ok="estadoDia?.cierre != null" />
-        </div>
-        <div class="mt-4">
-          <NuxtLink
-            to="/operaciones/diario"
-            class="text-sm text-blue-600 hover:underline font-medium"
-          >
-            Ver Gestión de Planta →
-          </NuxtLink>
-        </div>
-      </div>
+      </section>
 
-      <div class="bg-white rounded-lg shadow-sm p-5">
-        <h2 class="font-semibold text-gray-700 mb-4">Accesos rápidos</h2>
+      <section class="card">
+        <div class="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold uppercase text-gray-400">Acciones</p>
+            <h2 class="mt-1 font-semibold text-gray-800">Accesos rápidos</h2>
+          </div>
+          <span
+            class="rounded-full px-2.5 py-1 text-xs font-semibold"
+            :class="puedeOperar ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+          >
+            {{ puedeOperar ? 'Habilitado' : 'Bloqueado' }}
+          </span>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
           <QuickLink
             to="/pedidos/create"
             :icon="ClipboardList"
-            label="Nuevo Pedido"
+            label="Nuevo pedido"
             :disabled="!puedeOperar"
             @blocked="mostrarBloqueoOperativo"
           />
           <QuickLink
             to="/ventas"
             :icon="Receipt"
-            label="Registrar Venta"
+            label="Registrar venta"
             :disabled="!puedeOperar"
             @blocked="mostrarBloqueoOperativo"
           />
           <QuickLink
             to="/rutas"
             :icon="Truck"
-            label="Gestionar Rutas"
+            label="Gestionar rutas"
             :disabled="!puedeOperar"
             @blocked="mostrarBloqueoOperativo"
           />
           <QuickLink to="/trabajadores" :icon="BriefcaseBusiness" label="Trabajadores" />
         </div>
-      </div>
+
+        <div v-if="!puedeOperar" class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-500">
+          Inicia o liquida la jornada desde Gestión de Planta para habilitar operaciones.
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -137,10 +133,14 @@
 <script setup lang="ts">
 import {
   AlertTriangle,
+  ArrowRight,
   BriefcaseBusiness,
   CalendarDays,
+  CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
+  LockKeyhole,
   Receipt,
   Rocket,
   Truck,
@@ -165,6 +165,8 @@ const todayLabel = new Intl.DateTimeFormat('es-CO', {
 }).format(new Date())
 
 type CardColor = 'green' | 'blue' | 'orange' | 'purple' | 'red'
+type StatusTone = 'ok' | 'pending' | 'blocked' | 'neutral'
+
 const statCards = ref<{ label: string; value: string; icon?: any; color: CardColor }[]>([
   { label: 'Ventas hoy', value: '-', icon: Receipt, color: 'green' },
   { label: 'Pedidos activos', value: '-', icon: ClipboardList, color: 'blue' },
@@ -178,11 +180,122 @@ const hayJornadaAnteriorPendiente = computed(() =>
 const puedeOperar = computed(() =>
   Boolean(estadoDia.value?.abierto && !hayJornadaAnteriorPendiente.value),
 )
-const jornadaStatusLabel = computed(() => {
-  if (!estadoDia.value?.apertura) return 'Jornada: Sin Iniciar'
-  if (estadoDia.value?.cierre) return 'Jornada cerrada'
-  return 'Jornada abierta'
+
+const operationalPanel = computed(() => {
+  if (loadingEstado.value) {
+    return {
+      icon: CalendarDays,
+      actionIcon: ArrowRight,
+      badge: 'Consultando',
+      title: 'Validando jornada',
+      description: 'Estamos consultando el estado operativo antes de habilitar acciones.',
+      actionLabel: 'Ver Gestión de Planta',
+      to: '/operaciones/diario',
+      wrapperClass: 'border-gray-200 bg-white',
+      iconClass: 'bg-gray-100 text-gray-600',
+      badgeClass: 'bg-gray-100 text-gray-600',
+    }
+  }
+
+  if (hayJornadaAnteriorPendiente.value) {
+    return {
+      icon: AlertTriangle,
+      actionIcon: CalendarDays,
+      badge: 'Liquidación pendiente',
+      title: `La jornada del ${formatDate(diaAbiertoPendiente.value.fecha)} quedó abierta`,
+      description: 'Liquida ese día antes de registrar pedidos, rutas o ventas nuevas.',
+      actionLabel: 'Ir a liquidar día anterior',
+      to: { path: '/operaciones/diario', query: { fecha: diaAbiertoPendiente.value.fecha } },
+      wrapperClass: 'border-amber-300 bg-amber-50',
+      iconClass: 'bg-amber-100 text-amber-700',
+      badgeClass: 'bg-amber-100 text-amber-800',
+    }
+  }
+
+  if (!loadingEstado.value && estadoDia.value && !estadoDia.value.apertura) {
+    return {
+      icon: Rocket,
+      actionIcon: ArrowRight,
+      badge: 'Sin iniciar',
+      title: 'Jornada sin iniciar',
+      description: 'Abre la planta para habilitar pedidos, rutas, ventas y el cierre del día.',
+      actionLabel: 'Abrir jornada de hoy',
+      to: { path: '/operaciones/diario', query: { fecha: today, abrir: '1' } },
+      wrapperClass: 'border-blue-200 bg-blue-50',
+      iconClass: 'bg-blue-100 text-blue-700',
+      badgeClass: 'bg-blue-100 text-blue-700',
+    }
+  }
+
+  if (estadoDia.value?.abierto) {
+    return {
+      icon: CheckCircle2,
+      actionIcon: ArrowRight,
+      badge: 'Abierta',
+      title: 'Jornada activa',
+      description: 'Las operaciones están habilitadas. Revisa producción y cierre cuando termines el día.',
+      actionLabel: 'Gestionar jornada',
+      to: '/operaciones/diario',
+      wrapperClass: 'border-green-200 bg-green-50',
+      iconClass: 'bg-green-100 text-green-700',
+      badgeClass: 'bg-green-100 text-green-700',
+    }
+  }
+
+  return {
+    icon: LockKeyhole,
+    actionIcon: ArrowRight,
+    badge: 'Cerrada',
+    title: 'Jornada cerrada',
+    description: 'El día ya fue liquidado. Puedes consultar el detalle en Gestión de Planta.',
+    actionLabel: 'Ver detalle',
+    to: '/operaciones/diario',
+    wrapperClass: 'border-gray-200 bg-white',
+    iconClass: 'bg-gray-100 text-gray-600',
+    badgeClass: 'bg-gray-100 text-gray-600',
+  }
 })
+
+const statusChecks = computed(() => {
+  const pedidos = Number(estadoDia.value?.pedidosPendientes ?? 0)
+  const rutas = Number(estadoDia.value?.rutasAbiertas ?? 0)
+
+  return [
+    {
+      icon: CalendarDays,
+      label: 'Apertura',
+      detail: estadoDia.value?.apertura ? 'Registrada' : 'Pendiente',
+      tone: estadoDia.value?.apertura ? 'ok' : 'pending',
+    },
+    {
+      icon: ClipboardList,
+      label: 'Pedidos',
+      detail: pedidos > 0 ? `${pedidos} pendientes` : 'Sin pendientes',
+      tone: pedidos > 0 ? 'pending' : 'ok',
+    },
+    {
+      icon: Truck,
+      label: 'Rutas',
+      detail: rutas > 0 ? `${rutas} abiertas` : 'Sin rutas abiertas',
+      tone: rutas > 0 ? 'pending' : 'ok',
+    },
+    {
+      icon: ClipboardCheck,
+      label: 'Cierre',
+      detail: estadoDia.value?.cierre ? 'Registrado' : (estadoDia.value?.apertura ? 'Pendiente' : 'Sin iniciar'),
+      tone: estadoDia.value?.cierre ? 'ok' : (estadoDia.value?.apertura ? 'neutral' : 'pending'),
+    },
+  ] as { icon: any; label: string; detail: string; tone: StatusTone }[]
+})
+
+function statusToneClass(tone: StatusTone) {
+  return {
+    ok: { icon: 'bg-green-100 text-green-700', text: 'text-green-700' },
+    pending: { icon: 'bg-amber-100 text-amber-700', text: 'text-amber-700' },
+    blocked: { icon: 'bg-red-100 text-red-700', text: 'text-red-700' },
+    neutral: { icon: 'bg-blue-100 text-blue-700', text: 'text-blue-700' },
+  }[tone]
+}
 
 function mostrarBloqueoOperativo() {
   notify.error("Acceso Restringido: Es necesario iniciar la jornada en 'Gestión de Planta' para operar.")
