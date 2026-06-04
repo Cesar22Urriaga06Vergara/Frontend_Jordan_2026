@@ -68,9 +68,13 @@
             <NavItem to="/catalogos/labor-tipos" :icon="Layers3" label="Tipos de labor" @click="closeSidebarOnMobile" />
           </NavGroup>
 
-          <NavGroup label="Sistema">
-            <NavItem to="/reportes" :icon="BarChart3" label="Reportes" @click="closeSidebarOnMobile" />
-            <NavItem v-if="!authStore.isContador" to="/configuracion" :icon="Settings" label="Configuración" @click="closeSidebarOnMobile" />
+          <NavGroup label="Reportes">
+            <NavItem to="/reportes" :icon="BarChart3" label="Reportes contables" @click="closeSidebarOnMobile" />
+            <NavItem v-if="!authStore.isContador" to="/reportes/inventario-produccion" :icon="Boxes" label="Inventario y producción" @click="closeSidebarOnMobile" />
+          </NavGroup>
+
+          <NavGroup v-if="!authStore.isContador" label="Sistema">
+            <NavItem to="/configuracion" :icon="Settings" label="Configuración" @click="closeSidebarOnMobile" />
           </NavGroup>
         </nav>
       <!-- User footer -->
@@ -283,7 +287,14 @@ function resolvePageMeta(path: string): {
         { label: 'Tipos de trabajador', href: '/catalogos/trabajador-tipos' },
       ],
     },
-    '/reportes': { title: 'Reportes', crumbs: [{ label: 'Reportes', href: '/reportes' }] },
+    '/reportes': { title: 'Reportes contables', crumbs: [{ label: 'Reportes contables', href: '/reportes' }] },
+    '/reportes/inventario-produccion': {
+      title: 'Inventario y producción',
+      crumbs: [
+        { label: 'Reportes', href: '/reportes' },
+        { label: 'Inventario y producción', href: '/reportes/inventario-produccion' },
+      ],
+    },
     '/configuracion': {
       title: 'Configuración',
       crumbs: [{ label: 'Configuración', href: '/configuracion' }],
