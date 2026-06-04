@@ -175,7 +175,7 @@ const statCards = ref<{ label: string; value: string; icon?: any; color: CardCol
 ])
 
 const hayJornadaAnteriorPendiente = computed(() =>
-  Boolean(diaAbiertoPendiente.value && !diaAbiertoPendiente.value.esFechaActual),
+  Boolean(diaAbiertoPendiente.value?.fecha && diaAbiertoPendiente.value.fecha !== today),
 )
 const puedeOperar = computed(() =>
   Boolean(estadoDia.value?.abierto && !hayJornadaAnteriorPendiente.value),
@@ -307,7 +307,7 @@ async function fetchDashboard() {
       await Promise.allSettled([
         api.get('/diario/estado', { params: { fecha: today } }),
         api.get('/operaciones/pedidos', { params: { estado: 'PENDIENTE', limit: 1 } }),
-        api.get('/diario/dia-abierto-pendiente'),
+        api.get('/diario/dia-abierto-pendiente', { params: { fecha: today } }),
       ])
 
     if (estadoRes.status === 'fulfilled') {
@@ -323,7 +323,8 @@ async function fetchDashboard() {
       statCards.value[1].value = String(d?.total ?? 0)
     }
     if (diaPendienteRes.status === 'fulfilled') {
-      diaAbiertoPendiente.value = apiResponse.unwrap(diaPendienteRes.value)
+      const pendiente = apiResponse.unwrap(diaPendienteRes.value) as any
+      diaAbiertoPendiente.value = pendiente?.fecha && pendiente.fecha !== today ? pendiente : null
     }
 
     const fallas: string[] = []

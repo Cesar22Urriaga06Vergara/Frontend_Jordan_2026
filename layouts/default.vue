@@ -141,7 +141,7 @@
 import { AlertTriangle, ArrowLeft, BarChart3, Boxes, BriefcaseBusiness, CalendarDays, ChevronRight, ClipboardList, CreditCard, Factory, Home, Layers3, LogOut, Menu, Package, Receipt, Settings, Truck, UserCog, UserRound, WalletCards } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 import Breadcrumb from '~/components/layout/Breadcrumb.vue'
-import { formatDate } from '~/utils/formats'
+import { formatDate, todayISO } from '~/utils/formats'
 
 defineOptions({ name: 'DefaultLayout' })
 
@@ -363,8 +363,10 @@ async function logout() {
 
 async function fetchDiaAbiertoPendiente() {
   try {
-    const res = await api.get('/diario/dia-abierto-pendiente')
-    diaAbiertoPendiente.value = apiResponse.unwrap(res)
+    const fecha = todayISO()
+    const res = await api.get('/diario/dia-abierto-pendiente', { params: { fecha } })
+    const pendiente = apiResponse.unwrap(res) as any
+    diaAbiertoPendiente.value = pendiente?.fecha && pendiente.fecha !== fecha ? pendiente : null
   } catch {
     diaAbiertoPendiente.value = null
   }

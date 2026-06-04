@@ -503,7 +503,7 @@ async function fetchEstado() {
   try {
     const [estadoRes, diaPendienteRes] = await Promise.allSettled([
       api.get('/diario/estado', { params: { fecha: fechaSeleccionada.value } }),
-      api.get('/diario/dia-abierto-pendiente'),
+      api.get('/diario/dia-abierto-pendiente', { params: { fecha: fechaSeleccionada.value } }),
     ])
 
     if (estadoRes.status === 'fulfilled') {
