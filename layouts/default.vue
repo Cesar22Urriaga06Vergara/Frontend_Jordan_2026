@@ -38,11 +38,11 @@
 
         <!-- Nav -->
         <nav class="flex-1 overflow-y-auto py-4">
-          <NavGroup label="General">
+          <NavGroup v-if="!authStore.isContador" label="General">
             <NavItem to="/" :icon="Home" label="Dashboard" @click="closeSidebarOnMobile" />
           </NavGroup>
 
-          <NavGroup label="Operaciones">
+          <NavGroup v-if="!authStore.isContador" label="Operaciones">
             <NavItem to="/operaciones/diario" :icon="CalendarDays" label="Gestión de Planta" @click="closeSidebarOnMobile" />
             <NavItem to="/pedidos" :icon="ClipboardList" label="Pedidos" @click="closeSidebarOnMobile" />
             <NavItem to="/rutas" :icon="Truck" label="Rutas" @click="closeSidebarOnMobile" />
@@ -50,17 +50,17 @@
             <NavItem to="/operaciones/cartera" :icon="WalletCards" label="Cartera" @click="closeSidebarOnMobile" />
           </NavGroup>
 
-          <NavGroup label="Producción">
+          <NavGroup v-if="!authStore.isContador" label="Producción">
             <NavItem to="/produccion" :icon="Factory" label="Producción" @click="closeSidebarOnMobile" />
             <NavItem to="/inventario" :icon="Boxes" label="Inventario" @click="closeSidebarOnMobile" />
           </NavGroup>
 
-          <NavGroup label="Personal y Caja">
+          <NavGroup v-if="!authStore.isContador" label="Personal y Caja">
             <NavItem to="/trabajadores" :icon="BriefcaseBusiness" label="Labores y Pagos" @click="closeSidebarOnMobile" />
             <NavItem to="/operaciones/caja" :icon="CreditCard" label="Caja" @click="closeSidebarOnMobile" />
           </NavGroup>
 
-          <NavGroup label="Catálogos">
+          <NavGroup v-if="!authStore.isContador" label="Catálogos">
             <NavItem to="/catalogos/productos" :icon="Package" label="Productos" @click="closeSidebarOnMobile" />
             <NavItem to="/catalogos/clientes" :icon="UserRound" label="Clientes" @click="closeSidebarOnMobile" />
             <NavItem to="/catalogos/trabajadores" :icon="BriefcaseBusiness" label="Trabajadores" @click="closeSidebarOnMobile" />
@@ -70,7 +70,7 @@
 
           <NavGroup label="Sistema">
             <NavItem to="/reportes" :icon="BarChart3" label="Reportes" @click="closeSidebarOnMobile" />
-            <NavItem to="/configuracion" :icon="Settings" label="Configuración" @click="closeSidebarOnMobile" />
+            <NavItem v-if="!authStore.isContador" to="/configuracion" :icon="Settings" label="Configuración" @click="closeSidebarOnMobile" />
           </NavGroup>
         </nav>
       <!-- User footer -->
@@ -106,7 +106,7 @@
       <!-- Content -->
       <main class="flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-5 bg-gray-50">
         <div
-          v-if="diaAbiertoPendiente && route.path !== '/operaciones/diario'"
+          v-if="diaAbiertoPendiente && route.path !== '/operaciones/diario' && !authStore.isContador"
           class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm"
         >
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -124,6 +124,29 @@
               class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm"
             >
               Ir a liquidar jornada
+              <ChevronRight class="h-4 w-4" />
+            </NuxtLink>
+          </div>
+        </div>
+        <div
+          v-if="stockBajoGlobal.length && route.path !== '/operaciones/diario' && !authStore.isContador"
+          class="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-orange-900 shadow-sm"
+        >
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
+              <AlertTriangle class="mt-0.5 h-5 w-5 flex-shrink-0 text-orange-700" />
+              <div>
+                <p class="text-sm font-semibold">Stock casi agotado</p>
+                <p class="text-xs text-orange-800">
+                  {{ stockBajoGlobalResumen }}. Revisa producción o ajuste en Gestión de Planta.
+                </p>
+              </div>
+            </div>
+            <NuxtLink
+              to="/operaciones/diario"
+              class="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+            >
+              Ir a Gestión de Planta
               <ChevronRight class="h-4 w-4" />
             </NuxtLink>
           </div>
@@ -153,14 +176,23 @@ const apiResponse = useApiResponse()
 // En desktop empieza abierto, en móvil cerrado
 const sidebarOpen = ref(false)
 const diaAbiertoPendiente = ref<any>(null)
+const stockBajoGlobal = ref<any[]>([])
+let stockBajoTimer: ReturnType<typeof setInterval> | undefined
 
 onMounted(() => {
   sidebarOpen.value = window.innerWidth >= 1024
   fetchDiaAbiertoPendiente()
+  fetchStockBajoGlobal()
+  stockBajoTimer = setInterval(fetchStockBajoGlobal, 30000)
 })
 
 watch(() => route.fullPath, () => {
   fetchDiaAbiertoPendiente()
+  fetchStockBajoGlobal()
+})
+
+onBeforeUnmount(() => {
+  if (stockBajoTimer) clearInterval(stockBajoTimer)
 })
 
 function closeSidebarOnMobile() {
@@ -174,6 +206,14 @@ const userInitial = computed(() =>
 const pageTitle = computed(() => resolvePageMeta(route.path).title)
 
 const breadcrumbs = computed(() => resolvePageMeta(route.path).crumbs)
+
+const stockBajoGlobalResumen = computed(() => {
+  const nombres = stockBajoGlobal.value
+    .slice(0, 3)
+    .map(item => item?.producto?.nombre ?? `Producto ${item?.productoId}`)
+    .join(', ')
+  return `${nombres}${stockBajoGlobal.value.length > 3 ? ` y ${stockBajoGlobal.value.length - 3} más` : ''}`
+})
 
 function resolvePageMeta(path: string): {
   title: string
@@ -369,6 +409,15 @@ async function fetchDiaAbiertoPendiente() {
     diaAbiertoPendiente.value = pendiente?.fecha && pendiente.fecha !== fecha ? pendiente : null
   } catch {
     diaAbiertoPendiente.value = null
+  }
+}
+
+async function fetchStockBajoGlobal() {
+  try {
+    const res = await api.get('/inventarios/stock-bajo')
+    stockBajoGlobal.value = apiResponse.list(res)
+  } catch {
+    stockBajoGlobal.value = []
   }
 }
 </script>

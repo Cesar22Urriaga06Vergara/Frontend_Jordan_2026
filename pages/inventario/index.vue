@@ -1,153 +1,288 @@
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <h1 class="text-2xl font-bold text-gray-800">Inventario</h1>
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">Inventario</h1>
+        <p class="mt-1 text-sm text-gray-500">Stock de productos, alertas y tanques de agua.</p>
+      </div>
       <div class="flex gap-2">
-        <input v-model="filtroFecha" type="date" class="form-input w-40" @change="fetchEstado" />
-        <button class="btn-secondary inline-flex items-center gap-2" @click="fetchEstado">
+        <input v-model="filtroFecha" type="date" class="form-input w-40" @change="fetchAll" />
+        <button class="btn-secondary inline-flex items-center gap-2" @click="fetchAll">
           <RefreshCw class="h-4 w-4" />
           Actualizar
         </button>
       </div>
     </div>
 
-    <!-- Info -->
-    <div class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 flex items-start gap-3">
-      <Boxes class="h-5 w-5 mt-0.5 text-blue-600" />
-      <p>
-        El inventario se mueve con producción, despachos y cierre del día. Usa
-        <NuxtLink to="/operaciones/diario" class="underline font-semibold">Gestión de Planta</NuxtLink>
-        para abrir el día o registrar producción.
-      </p>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <StatCard label="Productos en stock" :value="String(inventarioActual.length)" :icon="Boxes" color="blue" :loading="loading" />
+      <StatCard label="Alertas de stock" :value="String(stockBajo.length)" :icon="AlertTriangle" color="orange" :loading="loading" />
+      <StatCard label="Producción del día" :value="String(totalProducido)" :icon="Factory" color="green" :loading="loading" />
+      <StatCard label="Tanques activos" :value="String(tanquesActivos.length)" :icon="Droplets" color="purple" :loading="loading" />
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="card">
-        <p class="text-sm text-gray-500">Productos iniciales</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ inventarioInicial.length }}</p>
+    <section v-if="stockBajo.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-amber-900">Alertas de stock bajo</h2>
+          <p class="text-sm text-amber-700">Cuando una paca o producto llegue al mínimo, se marca aquí para producir o ajustar stock.</p>
+        </div>
+        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{{ stockBajo.length }} alertas</span>
       </div>
-      <div class="card">
-        <p class="text-sm text-gray-500">Producción registrada</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ totalProducido }}</p>
-      </div>
-      <div class="card">
-        <p class="text-sm text-gray-500">Cierre inventario</p>
-        <p class="text-2xl font-bold mt-1" :class="cierreInventario.length ? 'text-green-700' : 'text-gray-400'">
-          {{ cierreInventario.length ? 'Registrado' : 'Pendiente' }}
-        </p>
-      </div>
-    </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-amber-200 text-left text-xs uppercase text-amber-800">
+            <th class="pb-2 font-medium">Producto</th>
+            <th class="pb-2 text-right font-medium">Stock</th>
+            <th class="pb-2 text-right font-medium">Mínimo</th>
+            <th class="pb-2 text-right font-medium">Faltante</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in stockBajo" :key="item.id" class="border-b border-amber-100">
+            <td class="py-2 font-medium text-gray-900">{{ item.producto?.nombre ?? item.productoId }}</td>
+            <td class="py-2 text-right text-amber-900">{{ item.stockActual }}</td>
+            <td class="py-2 text-right text-amber-900">{{ item.stockMinimo }}</td>
+            <td class="py-2 text-right font-semibold text-amber-900">{{ faltanteStock(item) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
-    <!-- Estado apertura inventario -->
-    <div class="card">
-      <h2 class="font-semibold text-gray-700 mb-4">
-        Inventario inicial — {{ formatDate(filtroFecha) }}
-        <span v-if="loadingEstado" class="text-gray-400 font-normal text-sm ml-2">Cargando…</span>
-      </h2>
+    <section class="card">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <h2 class="font-semibold text-gray-700">Stock actual de productos</h2>
+        <span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-500">{{ inventarioActual.length }} productos</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b text-left text-xs uppercase text-gray-500">
+            <th class="pb-2 font-medium">Producto</th>
+            <th class="pb-2 text-right font-medium">Stock actual</th>
+            <th class="pb-2 text-right font-medium">Stock mínimo</th>
+            <th class="pb-2 font-medium">Estado</th>
+            <th class="pb-2 text-right font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in inventarioActual" :key="item.id" class="border-b border-gray-50">
+            <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
+            <td class="py-2 text-right text-gray-600">{{ item.stockActual }}</td>
+            <td class="py-2 text-right text-gray-600">{{ item.stockMinimo }}</td>
+            <td class="py-2">
+              <span class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="stockEstaBajo(item) ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-700'">
+                {{ stockEstaBajo(item) ? 'Bajo' : 'OK' }}
+              </span>
+            </td>
+            <td class="py-2 text-right">
+              <button class="btn-secondary inline-flex items-center gap-1 px-2 py-1 text-xs" @click="openAjusteStock(item)">
+                <Pencil class="h-3.5 w-3.5" />
+                Corregir
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!inventarioActual.length">
+            <td colspan="5" class="py-4 text-center text-gray-400">Sin stock registrado</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
-      <div v-if="inventarioInicial.length">
+    <section class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div class="card">
+        <h2 class="mb-4 font-semibold text-gray-700">Inventario inicial - {{ formatDate(filtroFecha) }}</h2>
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-gray-500 border-b text-xs uppercase">
+            <tr class="border-b text-left text-xs uppercase text-gray-500">
               <th class="pb-2 font-medium">Producto</th>
-              <th class="pb-2 font-medium text-right">Cant. inicial</th>
+              <th class="pb-2 text-right font-medium">Cantidad inicial</th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="item in inventarioInicial"
-              :key="item.productoId ?? item.id"
-              class="border-b border-gray-50"
-            >
+            <tr v-for="item in inventarioInicial" :key="item.id" class="border-b border-gray-50">
               <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
               <td class="py-2 text-right text-gray-600">{{ item.cantidadInicial }}</td>
+            </tr>
+            <tr v-if="!inventarioInicial.length">
+              <td colspan="2" class="py-4 text-center text-gray-400">Sin apertura para la fecha seleccionada</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-else-if="!loadingEstado" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 text-center py-8 px-4">
-        <Boxes class="h-8 w-8 text-gray-300 mx-auto mb-2" />
-        <p class="font-medium text-gray-700">Sin inventario inicial registrado</p>
-        <p class="text-sm text-gray-500 mt-1">Abre el día para cargar el saldo inicial y los productos disponibles.</p>
-        <NuxtLink to="/operaciones/diario" class="btn-primary inline-flex items-center gap-2 mt-4">
-          <CalendarDays class="h-4 w-4" />
-          Abrir día
-        </NuxtLink>
-      </div>
-    </div>
 
-    <!-- Producción del día -->
-    <div class="card" v-if="produccion.length || !loadingEstado">
-      <div class="flex items-center justify-between gap-3 mb-4">
-        <h2 class="font-semibold text-gray-700">Producción registrada</h2>
-        <span class="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-1">{{ totalProducido }} unidades</span>
+      <div class="card">
+        <h2 class="mb-4 font-semibold text-gray-700">Producción registrada</h2>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b text-left text-xs uppercase text-gray-500">
+              <th class="pb-2 font-medium">Producto</th>
+              <th class="pb-2 text-right font-medium">Producido</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in produccion" :key="item.id" class="border-b border-gray-50">
+              <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
+              <td class="py-2 text-right text-gray-600">{{ item.cantidad }}</td>
+            </tr>
+            <tr v-if="!produccion.length">
+              <td colspan="2" class="py-4 text-center text-gray-400">Sin producción registrada</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-gray-500 border-b text-xs uppercase">
-            <th class="pb-2 font-medium">Producto</th>
-            <th class="pb-2 font-medium text-right">Producido</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="p in produccion"
-            :key="p.productoId ?? p.id"
-            class="border-b border-gray-50"
-          >
-            <td class="py-2 font-medium text-gray-800">{{ p.producto?.nombre ?? p.productoId }}</td>
-            <td class="py-2 text-right text-gray-600">{{ p.cantidad }}</td>
-          </tr>
-          <tr v-if="!produccion.length">
-            <td colspan="2" class="py-6 text-center text-gray-400">Sin producción registrada</td>
-          </tr>
-        </tbody>
-      </table>
+    </section>
 
-      <div class="mt-4">
-        <NuxtLink to="/operaciones/diario" class="btn-secondary inline-flex items-center gap-2">
+    <section class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      <div class="card">
+        <h2 class="mb-4 font-semibold text-gray-700">Inventario de cierre</h2>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b text-left text-xs uppercase text-gray-500">
+              <th class="pb-2 font-medium">Producto</th>
+              <th class="pb-2 text-right font-medium">Esperado</th>
+              <th class="pb-2 text-right font-medium">Real</th>
+              <th class="pb-2 text-right font-medium">Dif.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in cierreInventario" :key="item.id" class="border-b border-gray-50">
+              <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
+              <td class="py-2 text-right text-gray-600">{{ item.cantidadEsperada }}</td>
+              <td class="py-2 text-right text-gray-600">{{ item.cantidadContada }}</td>
+              <td class="py-2 text-right font-semibold" :class="Number(item.diferencia ?? 0) === 0 ? 'text-gray-400' : 'text-amber-700'">{{ item.diferencia }}</td>
+            </tr>
+            <tr v-if="!cierreInventario.length">
+              <td colspan="4" class="py-4 text-center text-gray-400">Cierre pendiente</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2 class="mb-4 font-semibold text-gray-700">Tanques al cierre</h2>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b text-left text-xs uppercase text-gray-500">
+              <th class="pb-2 font-medium">Tanque</th>
+              <th class="pb-2 text-right font-medium">Litros</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in tanquesCierre" :key="item.id" class="border-b border-gray-50">
+              <td class="py-2 font-medium text-gray-800">{{ item.tanqueAgua?.nombre ?? item.tanqueAguaId }}</td>
+              <td class="py-2 text-right text-gray-600">{{ item.litrosContados }}</td>
+            </tr>
+            <tr v-if="!tanquesCierre.length">
+              <td colspan="2" class="py-4 text-center text-gray-400">Sin conteo de tanques para esta fecha</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-gray-700">Tanques de agua</h2>
+          <p class="mt-1 text-sm text-gray-500">Catálogo físico usado en el cierre de Gestión de Planta.</p>
+        </div>
+        <button class="btn-primary inline-flex items-center gap-2 text-sm" @click="openCreateTanque">
           <Plus class="h-4 w-4" />
-          <span>Registrar producción</span>
-          <ChevronRight class="h-4 w-4" />
-        </NuxtLink>
+          Nuevo tanque
+        </button>
       </div>
-    </div>
 
-    <!-- Cierre inventario -->
-    <div class="card" v-if="cierreInventario.length">
-      <h2 class="font-semibold text-gray-700 mb-4">Inventario de cierre</h2>
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-left text-gray-500 border-b text-xs uppercase">
-            <th class="pb-2 font-medium">Producto</th>
-            <th class="pb-2 font-medium text-right">Esperado</th>
-            <th class="pb-2 font-medium text-right">Real</th>
-            <th class="pb-2 font-medium text-right">Diferencia</th>
+          <tr class="border-b text-left text-xs uppercase text-gray-500">
+            <th class="pb-2 font-medium">Tanque</th>
+            <th class="pb-2 text-right font-medium">Capacidad</th>
+            <th class="pb-2 text-center font-medium">Orden</th>
+            <th class="pb-2 font-medium">Estado</th>
+            <th class="pb-2 text-right font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-for="item in cierreInventario"
-            :key="item.productoId ?? item.id"
-            class="border-b border-gray-50"
-          >
-            <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
-            <td class="py-2 text-right text-gray-600">{{ item.cantidadEsperada ?? '—' }}</td>
-            <td class="py-2 text-right text-gray-600">{{ item.cantidadContada ?? '—' }}</td>
-            <td class="py-2 text-right font-medium"
-              :class="(item.diferencia ?? 0) < 0 ? 'text-red-600' : (item.diferencia ?? 0) > 0 ? 'text-green-600' : 'text-gray-400'"
-            >
-              {{ item.diferencia !== undefined ? (item.diferencia > 0 ? '+' : '') + item.diferencia : '—' }}
+          <tr v-for="tanque in tanques" :key="tanque.id" class="border-b border-gray-50">
+            <td class="py-2">
+              <p class="font-medium text-gray-800">{{ tanque.nombre }}</p>
+              <p v-if="tanque.observaciones" class="text-xs text-gray-400">{{ tanque.observaciones }}</p>
+            </td>
+            <td class="py-2 text-right text-gray-600">{{ tanque.capacidadLitros ? `${tanque.capacidadLitros} L` : '-' }}</td>
+            <td class="py-2 text-center text-gray-500">{{ tanque.orden ?? 0 }}</td>
+            <td class="py-2">
+              <span class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="tanque.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+                {{ tanque.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+            <td class="py-2">
+              <div class="flex justify-end gap-2">
+                <button class="btn-secondary px-2 py-1 text-xs" @click="openEditTanque(tanque)">Editar</button>
+                <button v-if="tanque.activo" class="rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100" @click="desactivarTanque(tanque)">Eliminar</button>
+                <button v-else class="rounded-lg bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-100" @click="activarTanque(tanque)">Activar</button>
+              </div>
             </td>
           </tr>
+          <tr v-if="!tanques.length">
+            <td colspan="5" class="py-4 text-center text-gray-400">Sin tanques configurados</td>
+          </tr>
         </tbody>
       </table>
+    </section>
+
+    <div v-if="modalTanque" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="modalTanque = false">
+      <div class="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
+        <h2 class="text-lg font-bold text-gray-800">{{ editingTanqueId ? 'Editar tanque' : 'Nuevo tanque' }}</h2>
+        <FormField label="Nombre *">
+          <input v-model="tanqueForm.nombre" class="form-input" placeholder="Tanque 1" />
+        </FormField>
+        <FormField label="Capacidad en litros">
+          <input v-model.number="tanqueForm.capacidadLitros" class="form-input" type="number" min="0" />
+        </FormField>
+        <FormField label="Orden">
+          <input v-model.number="tanqueForm.orden" class="form-input" type="number" min="0" />
+        </FormField>
+        <FormField label="Observaciones">
+          <textarea v-model="tanqueForm.observaciones" class="form-input resize-none" rows="2" />
+        </FormField>
+        <label class="flex items-center gap-2 text-sm text-gray-600">
+          <input v-model="tanqueForm.activo" type="checkbox" class="h-4 w-4 rounded border-gray-300" />
+          Activo
+        </label>
+        <div class="flex justify-end gap-2 pt-1">
+          <button class="btn-secondary" @click="modalTanque = false">Cancelar</button>
+          <button class="btn-primary" :disabled="savingTanque" @click="guardarTanque">
+            {{ savingTanque ? 'Guardando...' : 'Guardar tanque' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="modalAjusteStock" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="modalAjusteStock = false">
+      <div class="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Corregir stock</h2>
+          <p class="mt-1 text-sm text-gray-500">{{ ajusteStockForm.productoNombre }}</p>
+        </div>
+        <FormField label="Cantidad real *">
+          <input v-model.number="ajusteStockForm.nuevaCantidad" class="form-input" type="number" min="0" />
+        </FormField>
+        <FormField label="Razón del ajuste *">
+          <textarea v-model="ajusteStockForm.razon" class="form-input resize-none" rows="3" placeholder="Corrección por error de digitación" />
+        </FormField>
+        <div class="flex justify-end gap-2 pt-1">
+          <button class="btn-secondary" @click="modalAjusteStock = false">Cancelar</button>
+          <button class="btn-primary" :disabled="savingAjusteStock" @click="guardarAjusteStock">
+            {{ savingAjusteStock ? 'Guardando...' : 'Guardar ajuste' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Boxes, CalendarDays, ChevronRight, Plus, RefreshCw } from 'lucide-vue-next'
+import { AlertTriangle, Boxes, Droplets, Factory, Pencil, Plus, RefreshCw } from 'lucide-vue-next'
 import { formatDate, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
@@ -157,25 +292,61 @@ const apiResponse = useApiResponse()
 const notify = useNotification()
 
 const filtroFecha = ref(todayISO())
-const loadingEstado = ref(true)
+const loading = ref(true)
+const savingTanque = ref(false)
+const savingAjusteStock = ref(false)
+const modalTanque = ref(false)
+const modalAjusteStock = ref(false)
+const editingTanqueId = ref<number | null>(null)
 
 const inventarioInicial = ref<any[]>([])
 const produccion = ref<any[]>([])
 const cierreInventario = ref<any[]>([])
+const tanquesCierre = ref<any[]>([])
+const inventarioActual = ref<any[]>([])
+const stockBajo = ref<any[]>([])
+const tanques = ref<any[]>([])
+
+const tanqueForm = reactive({
+  nombre: '',
+  capacidadLitros: undefined as number | undefined,
+  orden: 0,
+  observaciones: '',
+  activo: true,
+})
+
+const ajusteStockForm = reactive({
+  productoId: null as number | null,
+  productoNombre: '',
+  nuevaCantidad: 0,
+  razon: '',
+})
 
 const totalProducido = computed(() =>
   produccion.value.reduce((sum, item) => sum + Number(item?.cantidad ?? 0), 0),
 )
+const tanquesActivos = computed(() => tanques.value.filter(tanque => tanque.activo))
 
-async function fetchEstado() {
-  loadingEstado.value = true
+function stockEstaBajo(item: any) {
+  return Number(item?.stockActual ?? 0) <= Number(item?.stockMinimo ?? 0)
+}
+
+function faltanteStock(item: any) {
+  return Math.max(0, Number(item?.stockMinimo ?? 0) - Number(item?.stockActual ?? 0))
+}
+
+async function fetchAll() {
+  loading.value = true
   inventarioInicial.value = []
   produccion.value = []
   cierreInventario.value = []
+  tanquesCierre.value = []
   try {
-    const [estadoRes, historialRes] = await Promise.allSettled([
-      api.get(`/diario/estado?fecha=${filtroFecha.value}`),
-      api.get('/diario/historial', { params: { limit: 30 } }),
+    const [estadoRes, inventarioRes, stockBajoRes, tanquesRes] = await Promise.allSettled([
+      api.get('/diario/estado', { params: { fecha: filtroFecha.value } }),
+      api.get('/inventarios', { params: { limit: 500 } }),
+      api.get('/inventarios/stock-bajo'),
+      api.get('/diario/tanques-agua', { params: { includeInactive: 'true' } }),
     ])
 
     if (estadoRes.status === 'fulfilled') {
@@ -183,15 +354,137 @@ async function fetchEstado() {
       inventarioInicial.value = d.apertura?.inventariosInicial ?? []
       produccion.value = d.apertura?.producciondiaria ?? []
       cierreInventario.value = d.cierre?.cierreInventario ?? []
-    } else {
-      notify.error('No se pudo cargar el estado de inventario')
+      tanquesCierre.value = d.cierre?.cierreTanquesAgua ?? []
     }
+    if (inventarioRes.status === 'fulfilled') inventarioActual.value = apiResponse.list(inventarioRes.value)
+    if (stockBajoRes.status === 'fulfilled') stockBajo.value = apiResponse.list(stockBajoRes.value)
+    if (tanquesRes.status === 'fulfilled') tanques.value = apiResponse.list(tanquesRes.value)
   } catch {
-    notify.error('No se pudo cargar el estado de inventario')
+    notify.error('No se pudo cargar inventario')
   } finally {
-    loadingEstado.value = false
+    loading.value = false
   }
 }
 
-onMounted(fetchEstado)
+function resetTanqueForm() {
+  editingTanqueId.value = null
+  tanqueForm.nombre = ''
+  tanqueForm.capacidadLitros = undefined
+  tanqueForm.orden = (tanques.value.length || 0) + 1
+  tanqueForm.observaciones = ''
+  tanqueForm.activo = true
+}
+
+function openCreateTanque() {
+  resetTanqueForm()
+  modalTanque.value = true
+}
+
+function openEditTanque(tanque: any) {
+  editingTanqueId.value = tanque.id
+  tanqueForm.nombre = tanque.nombre ?? ''
+  tanqueForm.capacidadLitros = tanque.capacidadLitros === null ? undefined : Number(tanque.capacidadLitros ?? 0)
+  tanqueForm.orden = Number(tanque.orden ?? 0)
+  tanqueForm.observaciones = tanque.observaciones ?? ''
+  tanqueForm.activo = Boolean(tanque.activo)
+  modalTanque.value = true
+}
+
+function tanquePayload(activo = tanqueForm.activo) {
+  return {
+    nombre: tanqueForm.nombre,
+    capacidadLitros: tanqueForm.capacidadLitros,
+    orden: tanqueForm.orden,
+    observaciones: tanqueForm.observaciones,
+    activo,
+  }
+}
+
+async function guardarTanque() {
+  if (!tanqueForm.nombre.trim()) {
+    notify.error('El nombre del tanque es requerido')
+    return
+  }
+  savingTanque.value = true
+  try {
+    if (editingTanqueId.value) {
+      await api.patch(`/diario/tanques-agua/${editingTanqueId.value}`, tanquePayload())
+    } else {
+      await api.post('/diario/tanques-agua', tanquePayload())
+    }
+    notify.success('Tanque guardado')
+    modalTanque.value = false
+    await fetchAll()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+  } finally {
+    savingTanque.value = false
+  }
+}
+
+async function desactivarTanque(tanque: any) {
+  try {
+    await api.delete(`/diario/tanques-agua/${tanque.id}`)
+    notify.success('Tanque eliminado del uso diario')
+    await fetchAll()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+  }
+}
+
+async function activarTanque(tanque: any) {
+  try {
+    await api.patch(`/diario/tanques-agua/${tanque.id}`, {
+      nombre: tanque.nombre,
+      capacidadLitros: tanque.capacidadLitros,
+      orden: tanque.orden,
+      observaciones: tanque.observaciones,
+      activo: true,
+    })
+    notify.success('Tanque activado')
+    await fetchAll()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+  }
+}
+
+function openAjusteStock(item: any) {
+  ajusteStockForm.productoId = Number(item.productoId ?? item.producto?.id ?? 0)
+  ajusteStockForm.productoNombre = item.producto?.nombre ?? `Producto ${ajusteStockForm.productoId}`
+  ajusteStockForm.nuevaCantidad = Number(item.stockActual ?? 0)
+  ajusteStockForm.razon = ''
+  modalAjusteStock.value = true
+}
+
+async function guardarAjusteStock() {
+  if (!ajusteStockForm.productoId) {
+    notify.error('Producto inválido')
+    return
+  }
+  if (Number(ajusteStockForm.nuevaCantidad) < 0) {
+    notify.error('La cantidad no puede ser negativa')
+    return
+  }
+  if (!ajusteStockForm.razon.trim()) {
+    notify.error('La razón del ajuste es requerida')
+    return
+  }
+
+  savingAjusteStock.value = true
+  try {
+    await api.patch(`/inventarios/${ajusteStockForm.productoId}/ajuste`, {
+      nuevaCantidad: Number(ajusteStockForm.nuevaCantidad),
+      razon: ajusteStockForm.razon.trim(),
+    })
+    notify.success('Stock corregido')
+    modalAjusteStock.value = false
+    await fetchAll()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+  } finally {
+    savingAjusteStock.value = false
+  }
+}
+
+onMounted(fetchAll)
 </script>

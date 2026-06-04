@@ -288,6 +288,22 @@
             </div>
           </div>
 
+          <div class="mt-5">
+            <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <Droplets class="h-4 w-4 text-blue-600" />
+              Tanques de agua
+            </h3>
+            <div class="space-y-3">
+              <div v-for="tanque in tanquesAgua" :key="tanque.nombre" class="grid grid-cols-[1fr_110px] gap-3 items-end">
+                <div>
+                  <p class="text-sm font-medium text-gray-700">{{ tanque.nombre }}</p>
+                  <p class="text-xs text-gray-400">Litros al cierre</p>
+                </div>
+                <input v-model.number="tanque.litros" class="form-input" type="number" min="0" />
+              </div>
+            </div>
+          </div>
+
           <button
             class="btn-danger mt-5 w-full"
             :disabled="savingCierre || cierreBloqueado"
@@ -353,6 +369,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  Droplets,
   Factory,
   LockKeyhole,
   PackagePlus,
@@ -362,6 +379,7 @@ import {
   WalletCards,
 } from 'lucide-vue-next'
 import { formatCurrency, formatDate, formatDateTime, todayISO } from '~/utils/formats'
+import { defaultTanquesAgua, mapTanquesCatalogo } from '~/utils/tanquesAgua'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -387,6 +405,7 @@ const aperturaInventario = ref<{ productoId: number | undefined; cantidadInicial
 const aperturaSaldoInicial = ref(0)
 const produccionItems = ref<{ productoId: number | undefined; cantidad: number }[]>([])
 const cierreInventario = ref<{ productoId: number; nombre: string; cantidadEsperada: number; cantidadContada: number }[]>([])
+const tanquesAgua = ref(defaultTanquesAgua())
 const cierreForm = reactive({ saldoContado: 0, observaciones: '' })
 
 const jornadaState = computed(() => {
@@ -555,6 +574,16 @@ async function fetchProductos() {
   }
 }
 
+async function fetchTanquesAgua() {
+  try {
+    const res = await api.get('/diario/tanques-agua')
+    const tanques = apiResponse.list(res)
+    tanquesAgua.value = mapTanquesCatalogo(tanques)
+  } catch {
+    tanquesAgua.value = defaultTanquesAgua()
+  }
+}
+
 function agregarInventario() {
   aperturaInventario.value.push({ productoId: undefined, cantidadInicial: 0 })
 }
@@ -619,6 +648,11 @@ async function cerrarDia() {
     await api.post('/diario/cierre', {
       saldoContado: cierreForm.saldoContado,
       observaciones: cierreForm.observaciones,
+      tanquesAgua: tanquesAgua.value.map(tanque => ({
+        tanqueAguaId: tanque.id,
+        nombre: tanque.nombre,
+        litros: Number(tanque.litros ?? 0),
+      })),
       inventario: cierreInventario.value.map(item => ({
         productoId: item.productoId,
         cantidadContada: item.cantidadContada,
@@ -626,6 +660,7 @@ async function cerrarDia() {
     }, { params: { fecha: fechaSeleccionada.value } })
     notify.success('Día cerrado correctamente')
     diaPendiente.value = null
+    tanquesAgua.value = defaultTanquesAgua()
     await Promise.all([fetchEstado(), fetchHistorial()])
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al cerrar día')
@@ -635,7 +670,7 @@ async function cerrarDia() {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchEstado(), fetchHistorial(), fetchProductos()])
+  await Promise.all([fetchEstado(), fetchHistorial(), fetchProductos(), fetchTanquesAgua()])
 })
 
 watch(

@@ -46,6 +46,24 @@
       />
     </div>
 
+    <section v-if="stockBajo.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex items-start gap-3">
+          <AlertTriangle class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" />
+          <div>
+            <p class="text-sm font-semibold text-amber-900">Stock casi agotado</p>
+            <p class="mt-1 text-sm text-amber-800">
+              {{ stockBajoResumen }}. Revisa inventario para producir o ajustar stock.
+            </p>
+          </div>
+        </div>
+        <NuxtLink to="/inventario" class="btn-secondary inline-flex items-center justify-center gap-2 text-sm">
+          Ver inventario
+          <ChevronRight class="h-4 w-4" />
+        </NuxtLink>
+      </div>
+    </section>
+
     <div class="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_0.85fr]">
       <section class="card">
         <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -157,6 +175,7 @@ const loadingStats = ref(true)
 const loadingEstado = ref(true)
 const estadoDia = ref<any>(null)
 const diaAbiertoPendiente = ref<any>(null)
+const stockBajo = ref<any[]>([])
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const today = todayISO()
@@ -179,6 +198,12 @@ const hayJornadaAnteriorPendiente = computed(() =>
 )
 const puedeOperar = computed(() =>
   Boolean(estadoDia.value?.abierto && !hayJornadaAnteriorPendiente.value),
+)
+const stockBajoResumen = computed(() =>
+  stockBajo.value
+    .slice(0, 3)
+    .map(item => `${item.producto?.nombre ?? item.productoId}: ${item.stockActual}/${item.stockMinimo}`)
+    .join(', ') + (stockBajo.value.length > 3 ? ` y ${stockBajo.value.length - 3} más` : ''),
 )
 
 const operationalPanel = computed(() => {
@@ -303,11 +328,12 @@ function mostrarBloqueoOperativo() {
 
 async function fetchDashboard() {
   try {
-    const [estadoRes, pedidosRes, diaPendienteRes] =
+    const [estadoRes, pedidosRes, diaPendienteRes, stockBajoRes] =
       await Promise.allSettled([
         api.get('/diario/estado', { params: { fecha: today } }),
         api.get('/operaciones/pedidos', { params: { estado: 'PENDIENTE', limit: 1 } }),
         api.get('/diario/dia-abierto-pendiente', { params: { fecha: today } }),
+        api.get('/inventarios/stock-bajo'),
       ])
 
     if (estadoRes.status === 'fulfilled') {
@@ -325,6 +351,9 @@ async function fetchDashboard() {
     if (diaPendienteRes.status === 'fulfilled') {
       const pendiente = apiResponse.unwrap(diaPendienteRes.value) as any
       diaAbiertoPendiente.value = pendiente?.fecha && pendiente.fecha !== today ? pendiente : null
+    }
+    if (stockBajoRes.status === 'fulfilled') {
+      stockBajo.value = apiResponse.list(stockBajoRes.value)
     }
 
     const fallas: string[] = []

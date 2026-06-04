@@ -127,7 +127,9 @@
             <input v-model="newUserForm.password" class="form-input" type="password" autocomplete="new-password" />
           </FormField>
           <FormField label="Rol">
-            <input v-model="newUserForm.rol" class="form-input" placeholder="ADMIN" />
+            <select v-model="newUserForm.rol" class="form-input">
+              <option v-for="rol in ROLES" :key="rol.value" :value="rol.value">{{ rol.label }}</option>
+            </select>
           </FormField>
 
           <div class="flex justify-end gap-2 pt-1">
@@ -192,6 +194,10 @@ const TABS = [
   { id: 'perfil', label: 'Mi perfil' },
   { id: 'usuarios', label: 'Usuarios del sistema' },
   { id: 'empresa', label: 'Datos de la empresa' },
+]
+const ROLES = [
+  { value: 'ADMIN', label: 'Administrador' },
+  { value: 'CONTADOR', label: 'Contador' },
 ]
 const tabActivo = ref('perfil')
 
