@@ -1,110 +1,112 @@
 <template>
-  <div class="max-w-3xl mx-auto space-y-6">
-    <!-- Back -->
-    <NuxtLink to="/pedidos" class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
-      ← Volver a pedidos
-    </NuxtLink>
+  <div class="mx-auto max-w-5xl space-y-6">
+    <button type="button" class="btn-secondary inline-flex items-center gap-2" @click="navigateTo('/pedidos')">
+      <ArrowLeft class="h-4 w-4" />
+      Volver a pedidos
+    </button>
 
-    <!-- Loading -->
-    <div v-if="loading" class="card flex items-center justify-center h-40 text-gray-400">
-      Cargando…
+    <div v-if="loading" class="card flex h-40 items-center justify-center text-gray-400">
+      Cargando...
     </div>
 
     <template v-else-if="pedido">
-      <!-- Header -->
-      <div class="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-xl font-bold text-gray-800">{{ pedido.numeroPedido ?? pedido.numero ?? `Pedido #${pedido.id}` }}</h1>
-          <p class="text-sm text-gray-500 mt-0.5">{{ pedido.cliente?.nombre ?? '—' }}</p>
+      <div class="card flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-3">
+            <h1 class="truncate text-xl font-bold text-gray-800">{{ pedido.numeroPedido ?? pedido.numero ?? `Pedido #${pedido.id}` }}</h1>
+            <EstadoBadge :estado="pedido.estado" />
+          </div>
+          <p class="mt-1 text-sm text-gray-500">{{ pedido.cliente?.nombre ?? 'Sin cliente' }}</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
           <NuxtLink
             v-if="puedeEditarPedido"
             :to="`/pedidos/${pedido.id}/edit`"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50"
           >
             <Pencil :size="15" /> Editar
           </NuxtLink>
           <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 text-sm font-medium transition-colors"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-green-300 px-3 py-1.5 text-sm font-medium text-green-700 transition-colors hover:bg-green-50"
             @click="imprimirPedido(pedido)"
           >
-            <Printer :size="15" /> Imprimir ticket
+            <Printer :size="15" /> Imprimir
           </button>
           <button
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm font-medium transition-colors disabled:opacity-40"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-40"
             :disabled="deleting"
             @click="modalEliminarPedido?.open()"
           >
             <Trash2 :size="15" /> Eliminar
           </button>
-          <EstadoBadge :estado="pedido.estado" />
         </div>
       </div>
 
-      <!-- Info -->
-      <div class="card grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-        <div>
-          <p class="text-gray-500">Fecha</p>
-          <p class="font-medium">{{ formatDate(pedido.fechaPedido ?? pedido.fecha) }}</p>
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+        <div class="card space-y-4">
+          <h2 class="font-semibold text-gray-700">Informacion del despacho</h2>
+          <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div class="rounded-lg bg-gray-50 p-3">
+              <p class="text-gray-500">Cliente</p>
+              <p class="font-semibold text-gray-900">{{ pedido.cliente?.nombre ?? '-' }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 p-3">
+              <p class="text-gray-500">Trabajador</p>
+              <p class="font-semibold text-gray-900">{{ pedido.trabajador?.nombre ?? '-' }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 p-3">
+              <p class="flex items-center gap-1.5 text-gray-500"><Phone class="h-4 w-4" /> Telefono</p>
+              <p class="font-semibold text-gray-900">{{ telefonoPedido }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 p-3">
+              <p class="flex items-center gap-1.5 text-gray-500"><MapPin class="h-4 w-4" /> Direccion</p>
+              <p class="font-semibold text-gray-900">{{ direccionPedido }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 p-3">
+              <p class="text-gray-500">Fecha</p>
+              <p class="font-semibold text-gray-900">{{ formatDate(pedido.fechaPedido ?? pedido.fecha) }}</p>
+            </div>
+            <div class="rounded-lg bg-gray-50 p-3">
+              <p class="text-gray-500">Total</p>
+              <p class="font-semibold text-gray-900">{{ formatCurrency(pedido.totalPedido ?? totalPedido) }}</p>
+            </div>
+          </div>
+          <div v-if="pedido.observaciones" class="rounded-lg border border-gray-100 p-3 text-sm">
+            <p class="text-gray-500">Observaciones</p>
+            <p class="mt-1 text-gray-800">{{ pedido.observaciones }}</p>
+          </div>
         </div>
-        <div>
-          <p class="text-gray-500">Total</p>
-          <p class="font-medium">{{ formatCurrency(pedido.totalPedido ?? totalPedido) }}</p>
-        </div>
-        <div>
-          <p class="text-gray-500">Trabajador</p>
-          <p class="font-medium">{{ pedido.trabajador?.nombre ?? '-' }}</p>
-        </div>
-        <div v-if="pedido.observaciones">
-          <p class="text-gray-500">Observaciones</p>
-          <p class="font-medium">{{ pedido.observaciones }}</p>
-        </div>
+
+        <aside v-if="pedido.estado === 'PENDIENTE'" class="card h-fit border-blue-100 bg-blue-50/60">
+          <p class="font-semibold text-blue-900">Pendiente de ruta</p>
+          <p class="mt-1 text-sm text-blue-700">Asignalo desde Rutas cuando este listo para cargar.</p>
+          <NuxtLink to="/rutas" class="btn-primary mt-4 flex justify-center">Ir a rutas</NuxtLink>
+        </aside>
       </div>
 
-      <!-- Detalles -->
-      <div class="card">
-        <h2 class="font-semibold text-gray-700 mb-3">Productos</h2>
+      <div class="card overflow-x-auto p-0">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-100">
-              <th class="pb-2 font-medium">Producto</th>
-              <th class="pb-2 font-medium text-center">Cant.</th>
-              <th class="pb-2 font-medium text-right">Precio</th>
-              <th class="pb-2 font-medium text-right">Subtotal</th>
+            <tr class="border-b text-xs uppercase text-gray-500">
+              <th class="px-4 py-3 font-medium">Producto</th>
+              <th class="px-4 py-3 font-medium">Cant.</th>
+              <th class="px-4 py-3 font-medium">Precio</th>
+              <th class="px-4 py-3 font-medium">Subtotal</th>
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="d in pedido.detalles"
-              :key="d.id"
-              class="border-b border-gray-50 last:border-0"
-            >
-              <td class="py-2">{{ d.producto?.nombre ?? d.productoId }}</td>
-              <td class="py-2 text-center">{{ d.cantidad }}</td>
-              <td class="py-2 text-right">{{ formatCurrency(d.precioUnitario) }}</td>
-              <td class="py-2 text-right">{{ formatCurrency(d.subtotal) }}</td>
+            <tr v-for="d in pedido.detalles" :key="d.id" class="border-b border-gray-50 last:border-0">
+              <td class="px-4 py-3 text-left font-medium text-gray-800">{{ d.producto?.nombre ?? d.productoId }}</td>
+              <td class="px-4 py-3">{{ d.cantidad }}</td>
+              <td class="px-4 py-3 text-right">{{ formatCurrency(d.precioUnitario) }}</td>
+              <td class="px-4 py-3 text-right font-semibold">{{ formatCurrency(d.subtotal) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Panel ir a rutas (solo cuando está PENDIENTE) -->
-      <div v-if="pedido.estado === 'PENDIENTE'" class="card border-l-4 border-blue-400 bg-blue-50">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p class="font-semibold text-blue-800 text-sm">Este pedido está pendiente de cargarse</p>
-            <p class="text-xs text-blue-600 mt-0.5">Para asignarlo a una ruta, hazlo desde la sección de Rutas. Ahí podrás ver todos los pedidos pendientes y cargarlos de una vez.</p>
-          </div>
-          <NuxtLink to="/rutas" class="btn-primary whitespace-nowrap flex items-center gap-1 justify-center">
-            → Ir a Rutas
-          </NuxtLink>
-        </div>
-      </div>
-
-      <!-- Cambio de estado -->
-      <div class="card" v-if="transicionesDisponibles.length">
-        <h2 class="font-semibold text-gray-700 mb-3">Cambiar estado</h2>
+      <div v-if="transicionesDisponibles.length" class="card">
+        <h2 class="mb-3 font-semibold text-gray-700">Cambiar estado</h2>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="t in transicionesDisponibles"
@@ -119,15 +121,14 @@
       </div>
     </template>
 
-    <div v-else class="card text-center text-gray-400 py-12">Pedido no encontrado.</div>
+    <div v-else class="card py-12 text-center text-gray-400">Pedido no encontrado.</div>
 
-    <!-- Modal cambio estado -->
     <div
       v-if="modalEstado"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       @click.self="modalEstado = false"
     >
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+      <div class="max-h-[100dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-none bg-white p-4 shadow-xl sm:max-h-[90vh] sm:rounded-lg sm:p-6">
         <h3 class="font-bold text-gray-800">Cambiar a: {{ estadoDestino }}</h3>
 
         <FormField label="Notas (opcional)">
@@ -140,24 +141,23 @@
           </FormField>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2">
+        <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button class="btn-secondary" @click="modalEstado = false">Cancelar</button>
           <button class="btn-primary" :disabled="saving" @click="confirmarCambioEstado">
-            {{ saving ? 'Guardando…' : 'Confirmar' }}
+            {{ saving ? 'Guardando...' : 'Confirmar' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Modal Confirmación Cancelación -->
     <ModalConfirmacion
       ref="modalCancelConfirm"
-      titulo="¿Cancelar este pedido?"
-      descripcion="Una vez cancelado, el pedido no podrá ser entregado. Esta acción no puede deshacerse."
-      textoConfirm="Sí, cancelar"
-      textoCancel="Volver atrás"
+      titulo="Cancelar este pedido"
+      descripcion="Una vez cancelado, el pedido no podra ser entregado."
+      textoConfirm="Si, cancelar"
+      textoCancel="Volver"
       :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
-      advertencia="Se requiere motivo de cancelación."
+      advertencia="Se requiere motivo de cancelacion."
       @confirm="procederCancelar"
       @cancel="modalCancelConfirm?.close()"
     />
@@ -178,7 +178,7 @@
 
 <script setup lang="ts">
 import { formatCurrency, formatDate } from '~/utils/formats'
-import { Pencil, Printer, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, MapPin, Pencil, Phone, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -220,11 +220,11 @@ const TRANSICIONES: Record<string, { valor: string; label: string; color?: strin
 }
 
 const transicionesDisponibles = computed(() =>
-  pedido.value ? (TRANSICIONES[pedido.value.estado] ?? []) : []
+  pedido.value ? (TRANSICIONES[pedido.value.estado] ?? []) : [],
 )
 
 const puedeEditarPedido = computed(() =>
-  pedido.value ? ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(pedido.value.estado) : false
+  pedido.value ? ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(pedido.value.estado) : false,
 )
 
 const totalPedido = computed(() => {
@@ -235,6 +235,14 @@ const totalPedido = computed(() => {
     return acc + Number(d?.cantidad ?? 0) * Number(d?.precioUnitario ?? 0)
   }, 0)
 })
+
+const direccionPedido = computed(() =>
+  pedido.value?.cliente?.direccion || pedido.value?.direccionEntrega || pedido.value?.direccion || 'Sin direccion registrada',
+)
+
+const telefonoPedido = computed(() =>
+  pedido.value?.cliente?.telefono || pedido.value?.cliente?.celular || 'Sin telefono',
+)
 
 async function fetchPedido() {
   loading.value = true
@@ -249,23 +257,14 @@ async function fetchPedido() {
 }
 
 function abrirModalEstado(estado: string) {
-  if (estado === 'CANCELADO') {
-    // Si es cancelar, primero abre modal de confirmación
-    modalCancelConfirm.value?.open()
-    estadoDestino.value = estado
-    estadoNotas.value = ''
-    motivoNoEntrega.value = ''
-  } else {
-    // Otros cambios de estado van directo
-    estadoDestino.value = estado
-    estadoNotas.value = ''
-    motivoNoEntrega.value = ''
-    modalEstado.value = true
-  }
+  estadoDestino.value = estado
+  estadoNotas.value = ''
+  motivoNoEntrega.value = ''
+  if (estado === 'CANCELADO') modalCancelConfirm.value?.open()
+  else modalEstado.value = true
 }
 
 function procederCancelar() {
-  // Una vez confirmado en modal de confirmación, abre el modal de estado
   modalCancelConfirm.value?.close()
   modalEstado.value = true
 }

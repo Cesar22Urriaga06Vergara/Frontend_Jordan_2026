@@ -40,16 +40,21 @@
           <li
             v-for="item in ruta.itemsRuta"
             :key="item.id"
-            class="px-4 py-3 flex items-center justify-between gap-2 bg-white"
+            class="flex flex-col gap-3 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div class="min-w-0">
+            <div class="min-w-0 text-left">
               <p class="font-medium text-gray-800">{{ item.pedido?.numero ?? item.pedidoId }}</p>
               <p class="text-xs text-gray-500 truncate">
                 {{ item.pedido?.cliente?.nombre ?? '' }}
                 <span v-if="item.pedido?.trabajador?.nombre"> · {{ item.pedido.trabajador.nombre }}</span>
               </p>
+              <p class="mt-1 flex items-start gap-1.5 text-xs text-gray-500">
+                <MapPin class="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
+                <span>{{ direccionPedidoRuta(item.pedido) }}</span>
+              </p>
+              <p class="mt-0.5 text-xs text-gray-400">{{ resumenPedidoRuta(item.pedido) }}</p>
             </div>
-            <div class="flex gap-2 items-center">
+            <div class="flex flex-wrap items-center gap-2 sm:justify-end">
               <EstadoBadge :estado="item.pedido?.estado ?? ''" />
               <button
                 v-if="puedeCorregirPedido(item)"
@@ -188,10 +193,10 @@
 
     <div
       v-if="modalEditarPedido && pedidoEditando"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="cerrarEditarPedidoEnRuta"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-none shadow-xl w-full max-w-3xl p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <div class="flex items-start justify-between gap-4">
           <div>
             <h2 class="font-bold text-gray-800">Corregir pedido</h2>
@@ -287,6 +292,7 @@ import {
   ArrowLeft,
   Ban,
   ClipboardList,
+  MapPin,
   PackageCheck,
   Plus,
   Trash2,
@@ -385,6 +391,22 @@ const acciones = computed(() => {
 function puedeCorregirPedido(item: any) {
   const estadoPedido = item?.pedido?.estado
   return puedeEditarPedidos.value && ['PENDIENTE', 'CARGADO_EN_RUTA'].includes(estadoPedido)
+}
+
+function direccionPedidoRuta(pedido: any) {
+  return pedido?.cliente?.direccion || pedido?.direccionEntrega || pedido?.direccion || 'Sin direccion registrada'
+}
+
+function resumenPedidoRuta(pedido: any) {
+  const detalles = Array.isArray(pedido?.detalles) ? pedido.detalles : []
+  if (!detalles.length) return 'Sin productos detallados'
+  const resumen = detalles.slice(0, 2).map((detalle: any) => {
+    const nombre = detalle.producto?.nombre ?? detalle.productoNombre ?? `Producto ${detalle.productoId ?? ''}`.trim()
+    const cantidad = Number(detalle.cantidad ?? 0)
+    return cantidad > 0 ? `${cantidad} ${nombre}` : nombre
+  })
+  const faltantes = detalles.length - resumen.length
+  return faltantes > 0 ? `${resumen.join(', ')} +${faltantes}` : resumen.join(', ')
 }
 
 function fechaInput(value: string | Date | undefined) {

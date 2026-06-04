@@ -19,7 +19,7 @@
         <option value="false">Inactivos</option>
       </select>
       <button
-        class="ml-auto bg-blue-950 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors flex items-center gap-2"
+        class="btn-primary ml-auto flex items-center gap-2 justify-center"
         @click="openModal()"
       >
         <Plus :size="16" /> Nuevo producto
@@ -98,8 +98,8 @@
 
     <!-- Modal -->
     <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+      <div v-if="showModal" class="fixed inset-0 bg-black/40 z-50 flex items-stretch justify-center p-0 sm:items-center sm:p-4">
+        <div class="bg-white rounded-none shadow-2xl w-full max-w-lg p-4 sm:rounded-xl sm:p-6 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           <h3 class="font-semibold text-gray-800 mb-4">
             {{ editItem ? 'Editar producto' : 'Nuevo producto' }}
           </h3>
@@ -127,11 +127,11 @@
             <FormField label="Descripción">
               <input v-model="form.descripcion" type="text" class="form-input" />
             </FormField>
-            <div class="flex justify-end gap-3 pt-2">
-              <button type="button" class="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50" @click="showModal = false">
+            <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <button type="button" class="btn-secondary" @click="showModal = false">
                 Cancelar
               </button>
-              <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-blue-950 text-white hover:bg-blue-800" :disabled="saving">
+              <button type="submit" class="btn-primary" :disabled="saving">
                 {{ saving ? 'Guardando...' : 'Guardar' }}
               </button>
             </div>
@@ -141,18 +141,18 @@
     </Teleport>
     <!-- Modal confirmación eliminar -->
     <Teleport to="body">
-      <div v-if="showConfirmDelete" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+      <div v-if="showConfirmDelete" class="fixed inset-0 bg-black/40 z-50 flex items-stretch justify-center p-0 sm:items-center sm:p-4">
+        <div class="bg-white rounded-none shadow-2xl w-full max-w-sm p-4 sm:rounded-xl sm:p-6 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           <h3 class="font-semibold text-gray-800 mb-2">¿Eliminar producto?</h3>
           <p class="text-sm text-gray-600 mb-5">
             ¿Seguro que deseas eliminar <strong>{{ productoAEliminar?.nombre }}</strong>?
             Esta acción no se puede deshacer. Si el producto tiene movimientos registrados no podrá eliminarse.
           </p>
-          <div class="flex justify-end gap-3">
-            <button class="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50" @click="showConfirmDelete = false">
+          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button class="btn-secondary" @click="showConfirmDelete = false">
               Cancelar
             </button>
-            <button class="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700" @click="eliminarProducto">
+            <button class="btn-danger bg-red-600 text-white hover:bg-red-700" @click="eliminarProducto">
               Eliminar
             </button>
           </div>
