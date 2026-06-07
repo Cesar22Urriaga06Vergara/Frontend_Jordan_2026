@@ -76,11 +76,12 @@
               <th class="px-4 py-3 font-medium">Email / Usuario</th>
               <th class="px-4 py-3 font-medium">Rol</th>
               <th class="px-4 py-3 font-medium">Estado</th>
+              <th class="px-4 py-3 font-medium text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loadingUsuarios">
-              <td colspan="5" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
+              <td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
             </tr>
             <tr
               v-for="u in usuarios"
@@ -100,6 +101,37 @@
                   class="px-2 py-0.5 rounded-full text-xs font-medium"
                   :class="userActivo(u) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
                 >{{ userActivo(u) ? 'Activo' : 'Inactivo' }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-blue-600"
+                    title="Editar usuario"
+                    @click="abrirEditarUsuario(u)"
+                  >
+                    <Pencil class="h-4 w-4" />
+                  </button>
+                  <button
+                    v-if="userActivo(u)"
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    title="Desactivar usuario"
+                    :disabled="esUsuarioActual(u)"
+                    @click="abrirDesactivarUsuario(u)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-green-200 text-green-700 hover:bg-green-50"
+                    title="Activar usuario"
+                    @click="activarUsuario(u)"
+                  >
+                    <RotateCcw class="h-4 w-4" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -140,6 +172,57 @@
           </div>
         </div>
       </div>
+
+      <div v-if="modalEditUser" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="cerrarEditarUsuario">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">Editar usuario</h2>
+            <p class="mt-1 text-xs text-gray-500">La contrasena es opcional. Dejela vacia si no desea cambiarla.</p>
+          </div>
+
+          <FormField label="Nombre *">
+            <input v-model="editUserForm.nombre" class="form-input" />
+          </FormField>
+          <FormField label="Email *">
+            <input v-model="editUserForm.email" class="form-input" type="email" />
+          </FormField>
+          <FormField label="Nueva contrasena">
+            <input v-model="editUserForm.password" class="form-input" type="password" autocomplete="new-password" />
+          </FormField>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="Rol">
+              <select v-model="editUserForm.rol" class="form-input" :disabled="esEditandoUsuarioActual">
+                <option v-for="rol in ROLES" :key="rol.value" :value="rol.value">{{ rol.label }}</option>
+              </select>
+            </FormField>
+            <FormField label="Estado">
+              <select v-model="editUserForm.estado" class="form-input" :disabled="esEditandoUsuarioActual">
+                <option value="ACTIVO">Activo</option>
+                <option value="INACTIVO">Inactivo</option>
+              </select>
+            </FormField>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-1">
+            <button class="btn-secondary" @click="cerrarEditarUsuario">Cancelar</button>
+            <button class="btn-primary" :disabled="savingEditUser" @click="guardarUsuario">
+              {{ savingEditUser ? 'Guardando...' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ModalConfirmacion
+        ref="modalDeactivateUser"
+        titulo="Desactivar usuario"
+        descripcion="El usuario no se borrara del historial, pero quedara inactivo para el sistema."
+        textoConfirm="Desactivar"
+        textoCancel="Cancelar"
+        :detalles="{ Usuario: userToDeactivate?.nombre, Email: userToDeactivate?.email, Rol: userToDeactivate?.rol }"
+        advertencia="No se puede desactivar tu propio usuario ni dejar el sistema sin administrador activo."
+        @confirm="desactivarUsuario"
+        @cancel="cerrarDesactivarUsuario"
+      />
     </div>
 
     <!-- Datos de la empresa -->
@@ -180,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next'
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-vue-next'
 import { useAuthStore } from '~/stores/auth'
 
 definePageMeta({ middleware: 'auth' })
@@ -216,13 +299,28 @@ const confirmPassword = ref('')
 // Usuarios
 const loadingUsuarios = ref(false)
 const savingCreateUser = ref(false)
+const savingEditUser = ref(false)
 const modalCreateUser = ref(false)
+const modalEditUser = ref(false)
+const modalDeactivateUser = ref()
+const userToDeactivate = ref<any>(null)
+const editingUserId = ref<number | null>(null)
 const usuarios = ref<any[]>([])
 const total = ref(0)
 const pagina = ref(1)
 const LIMITE = 20
 const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / LIMITE)))
 const newUserForm = reactive({ nombre: '', email: '', password: '', rol: 'ADMIN' })
+const editUserForm = reactive({
+  nombre: '',
+  email: '',
+  password: '',
+  rol: 'ADMIN',
+  estado: 'ACTIVO',
+})
+const esEditandoUsuarioActual = computed(() =>
+  editingUserId.value === Number(authStore.user?.id ?? 0),
+)
 
 async function actualizarPerfil() {
   savingProfile.value = true
@@ -276,6 +374,10 @@ function userActivo(u: any) {
   return Boolean(u?.activo ?? u?.isActive ?? true)
 }
 
+function esUsuarioActual(u: any) {
+  return Number(u?.id) === Number(authStore.user?.id ?? 0)
+}
+
 async function crearUsuario() {
   if (!newUserForm.nombre.trim() || !newUserForm.email.trim() || !newUserForm.password.trim()) {
     notify.error('Nombre, email y contraseña son requeridos')
@@ -302,6 +404,87 @@ async function crearUsuario() {
     notify.error(apiResponse.errorMessage(e))
   } finally {
     savingCreateUser.value = false
+  }
+}
+
+function abrirEditarUsuario(u: any) {
+  editingUserId.value = Number(u.id)
+  editUserForm.nombre = u.nombre ?? ''
+  editUserForm.email = u.email ?? ''
+  editUserForm.password = ''
+  editUserForm.rol = u.rol ?? 'ADMIN'
+  editUserForm.estado = u.estado ?? 'ACTIVO'
+  modalEditUser.value = true
+}
+
+function cerrarEditarUsuario() {
+  modalEditUser.value = false
+  editingUserId.value = null
+  editUserForm.password = ''
+}
+
+async function guardarUsuario() {
+  if (!editingUserId.value) return
+  if (!editUserForm.nombre.trim() || !editUserForm.email.trim()) {
+    notify.error('Nombre y email son requeridos')
+    return
+  }
+  if (editUserForm.password && editUserForm.password.length < 8) {
+    notify.error('La nueva contrasena debe tener al menos 8 caracteres')
+    return
+  }
+
+  savingEditUser.value = true
+  try {
+    const payload: Record<string, any> = {
+      nombre: editUserForm.nombre,
+      email: editUserForm.email,
+      rol: editUserForm.rol,
+      estado: editUserForm.estado,
+    }
+    if (editUserForm.password) payload.password = editUserForm.password
+
+    await api.patch(`/users/${editingUserId.value}`, payload)
+    notify.success('Usuario actualizado')
+    cerrarEditarUsuario()
+    await fetchUsuarios()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+  } finally {
+    savingEditUser.value = false
+  }
+}
+
+function abrirDesactivarUsuario(u: any) {
+  userToDeactivate.value = u
+  modalDeactivateUser.value?.open()
+}
+
+function cerrarDesactivarUsuario() {
+  userToDeactivate.value = null
+  modalDeactivateUser.value?.close()
+}
+
+async function desactivarUsuario() {
+  if (!userToDeactivate.value) return
+  try {
+    await api.delete(`/users/${userToDeactivate.value.id}`)
+    notify.success('Usuario desactivado')
+    cerrarDesactivarUsuario()
+    await fetchUsuarios()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
+    cerrarDesactivarUsuario()
+  }
+}
+
+async function activarUsuario(u: any) {
+  try {
+    await api.patch(`/users/${u.id}`, { estado: 'ACTIVO' })
+    notify.success('Usuario activado')
+    await fetchUsuarios()
+  } catch (e: any) {
+    notify.error(apiResponse.errorMessage(e))
   }
 }
 
