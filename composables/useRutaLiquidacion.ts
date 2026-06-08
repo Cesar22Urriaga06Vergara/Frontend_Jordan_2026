@@ -13,7 +13,12 @@ export type LiqPedidoForm = {
     precioUnitario: number
     subtotal: number
   }[]
-  estadoEntrega: 'ENTREGADO_PAGADO' | 'ENTREGADO_CREDITO' | 'NO_ENTREGADO'
+  estadoEntrega:
+    | 'ENTREGADO_PAGADO'
+    | 'ENTREGADO_CREDITO'
+    | 'REPROGRAMAR'
+    | 'NO_ENTREGADO'
+    | 'CANCELAR'
   tipoPago: 'EFECTIVO' | 'TRANSFERENCIA' | 'AMBOS'
   montoEfectivo: number
   montoTransferencia: number
@@ -46,7 +51,7 @@ export function useRutaLiquidacion() {
 
   function carteraPedido(p: LiqPedidoForm): number {
     const totalPedido = toNumberOrZero(p.montoPedido)
-    if (p.estadoEntrega === 'NO_ENTREGADO') return 0
+    if (!pedidoEntregado(p)) return 0
     if (p.estadoEntrega === 'ENTREGADO_CREDITO') return totalPedido
     return Math.max(0, totalPedido - montoPagadoPedido(p))
   }
@@ -71,7 +76,7 @@ export function useRutaLiquidacion() {
       return
     }
 
-    if (p.estadoEntrega === 'NO_ENTREGADO') {
+    if (!pedidoEntregado(p)) {
       p.tipoPago = 'EFECTIVO'
       p.montoEfectivo = 0
       p.montoTransferencia = 0
@@ -134,15 +139,59 @@ export function useRutaLiquidacion() {
 
   const totalEntregadoCalculado = computed(() =>
     liqForm.pedidos
-      .filter((p) => p.estadoEntrega !== 'NO_ENTREGADO')
+      .filter((p) => pedidoEntregado(p))
       .reduce((acc, p) => acc + Number(p.montoPedido || 0), 0),
   )
 
   const totalNoEntregadoCalculado = computed(() =>
     liqForm.pedidos
-      .filter((p) => p.estadoEntrega === 'NO_ENTREGADO')
+      .filter((p) => !pedidoEntregado(p))
       .reduce((acc, p) => acc + Number(p.montoPedido || 0), 0),
   )
+
+  const pedidosEntregados = computed(() =>
+    liqForm.pedidos.filter((p) => pedidoEntregado(p)),
+  )
+
+  const pedidosReprogramados = computed(() =>
+    liqForm.pedidos.filter((p) => p.estadoEntrega === 'REPROGRAMAR'),
+  )
+
+  const pedidosNoEntregadosFinal = computed(() =>
+    liqForm.pedidos.filter((p) => p.estadoEntrega === 'NO_ENTREGADO'),
+  )
+
+  const pedidosCancelados = computed(() =>
+    liqForm.pedidos.filter((p) => p.estadoEntrega === 'CANCELAR'),
+  )
+
+  function pedidoEntregado(p: LiqPedidoForm): boolean {
+    return p.estadoEntrega === 'ENTREGADO_PAGADO' || p.estadoEntrega === 'ENTREGADO_CREDITO'
+  }
+
+  function productosResumen(p: LiqPedidoForm): string {
+    if (!p.detalles.length) return 'Sin productos'
+    const base = p.detalles
+      .slice(0, 2)
+      .map((d) => `${d.productoNombre} x${toNumberOrZero(d.cantidad)}`)
+      .join(', ')
+    const restantes = p.detalles.length - 2
+    return restantes > 0 ? `${base} +${restantes}` : base
+  }
+
+  function estadoEntregaLabel(p: LiqPedidoForm): string {
+    if (p.estadoEntrega === 'ENTREGADO_PAGADO') return 'Entregado y cobrado'
+    if (p.estadoEntrega === 'ENTREGADO_CREDITO') return 'Entregado a credito'
+    if (p.estadoEntrega === 'REPROGRAMAR') return 'Reprogramar'
+    if (p.estadoEntrega === 'CANCELAR') return 'Cancelar'
+    return 'No entregado final'
+  }
+
+  function noEntregadoAccion(p: LiqPedidoForm) {
+    if (p.estadoEntrega === 'REPROGRAMAR') return 'REPROGRAMAR'
+    if (p.estadoEntrega === 'CANCELAR') return 'CANCELAR'
+    return 'NO_ENTREGADO'
+  }
 
   function resetFromItemsRuta(itemsRuta: any[]) {
     liqForm.gastosRuta = 0
@@ -228,7 +277,8 @@ export function useRutaLiquidacion() {
       observaciones: partesObs || undefined,
       pedidos: liqForm.pedidos.map((p) => ({
         pedidoId: p.pedidoId,
-        entregado: p.estadoEntrega !== 'NO_ENTREGADO',
+        entregado: pedidoEntregado(p),
+        noEntregadoAccion: pedidoEntregado(p) ? undefined : noEntregadoAccion(p),
         aCredito: p.estadoEntrega === 'ENTREGADO_CREDITO',
         tipoPago: p.estadoEntrega === 'ENTREGADO_PAGADO' ? p.tipoPago : undefined,
         montoEfectivo: p.estadoEntrega === 'ENTREGADO_PAGADO' ? toNumberOrZero(p.montoEfectivo) : 0,
@@ -255,6 +305,13 @@ export function useRutaLiquidacion() {
     totalRecibidoCalculado,
     totalEntregadoCalculado,
     totalNoEntregadoCalculado,
+    pedidosEntregados,
+    pedidosReprogramados,
+    pedidosNoEntregadosFinal,
+    pedidosCancelados,
+    pedidoEntregado,
+    productosResumen,
+    estadoEntregaLabel,
     resetFromItemsRuta,
     submitLiquidacion,
     toNumberOrZero,

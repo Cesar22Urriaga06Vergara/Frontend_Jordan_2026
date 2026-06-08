@@ -9,20 +9,35 @@ export const formatCurrency = (value: number | string): string => {
   }).format(safeNum)
 }
 
-const parseLocalDate = (date: string | Date | null | undefined): Date | null => {
+const parseCalendarDate = (date: string | Date | null | undefined): Date | null => {
+  if (!date) return null
+  if (date instanceof Date) return date
+
+  const datePart = date.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (datePart) {
+    const [, y, m, d] = datePart
+    return new Date(Number(y), Number(m) - 1, Number(d))
+  }
+
+  const parsed = new Date(date)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const parseDateTime = (date: string | Date | null | undefined): Date | null => {
   if (!date) return null
   if (date instanceof Date) return date
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     const [y, m, d] = date.split('-').map(Number)
     return new Date(y, m - 1, d)
   }
+
   const parsed = new Date(date)
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
 export const formatDate = (date: string | Date | null | undefined): string => {
-  const parsed = parseLocalDate(date)
-  if (!parsed) return '—'
+  const parsed = parseCalendarDate(date)
+  if (!parsed) return '-'
   return new Intl.DateTimeFormat('es-CO', {
     year: 'numeric',
     month: '2-digit',
@@ -31,8 +46,8 @@ export const formatDate = (date: string | Date | null | undefined): string => {
 }
 
 export const formatDateTime = (date: string | Date | null | undefined): string => {
-  const parsed = parseLocalDate(date)
-  if (!parsed) return '—'
+  const parsed = parseDateTime(date)
+  if (!parsed) return '-'
   return new Intl.DateTimeFormat('es-CO', {
     year: 'numeric',
     month: '2-digit',

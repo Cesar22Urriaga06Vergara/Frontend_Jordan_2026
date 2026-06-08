@@ -2,6 +2,8 @@
  * Composable para imprimir comprobantes de pedidos en impresoras POS (80mm).
  */
 
+import { formatDate } from '~/utils/formats'
+
 let _empresaCache: { nombre: string; nit?: string; direccion?: string; ciudad?: string; telefono?: string; slogan?: string } | null = null
 
 export function usePrintTicket() {
@@ -39,35 +41,14 @@ export function usePrintTicket() {
     return `$ ${Number(value ?? 0).toLocaleString('es-CO')}`
   }
 
-  function _formatFecha(fecha: string | undefined): string {
-    if (!fecha) return '-'
-    const d = new Date(fecha.includes('T') ? fecha : `${fecha}T12:00:00`)
-    return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  }
-
-  function _facturaPrincipal(pedido: any) {
-    return Array.isArray(pedido.ventas) && pedido.ventas.length ? pedido.ventas[0] : null
-  }
-
-  function _estadoFactura(pedido: any) {
-    const venta = _facturaPrincipal(pedido)
-    if (!venta) return { numero: 'Sin factura', estado: 'SIN FACTURA', saldo: 0 }
-    return {
-      numero: venta.numero ?? 'Sin numero',
-      estado: venta.estado ?? 'SIN ESTADO',
-      saldo: Number(venta.saldoPendiente ?? 0),
-    }
-  }
-
   async function imprimirPedido(pedido: any) {
     const empresa = await _getEmpresa()
     const numero = pedido.numeroPedido ?? pedido.numero ?? `#${pedido.id}`
     const cliente = pedido.cliente?.nombre ?? '-'
     const trabajador = pedido.trabajador?.nombre ?? (pedido.trabajadorId ? `Trabajador ${pedido.trabajadorId}` : '-')
-    const fechaStr = _formatFecha(pedido.fechaPedido ?? pedido.fecha)
+    const fechaStr = formatDate(pedido.fechaPedido ?? pedido.fecha)
     const detalles: any[] = pedido.detalles ?? []
     const observaciones: string = pedido.observaciones ?? ''
-    const factura = _estadoFactura(pedido)
     const logoUrl = `${window.location.origin}/LOGO.png`
 
     const total = detalles.reduce((acc: number, d: any) => {
@@ -177,8 +158,6 @@ export function usePrintTicket() {
     <div class="row"><span class="label">Fecha</span><span class="value normal">${fechaStr}</span></div>
     <div class="row"><span class="label">Cliente</span><span class="value">${_escapeHtml(cliente)}</span></div>
     <div class="row"><span class="label">Trabajador</span><span class="value">${_escapeHtml(trabajador)}</span></div>
-    <div class="row"><span class="label">Factura</span><span class="value normal">${_escapeHtml(factura.numero)}</span></div>
-    ${factura.saldo > 0 ? `<div class="row"><span class="label">Saldo factura</span><span class="value">${_formatCOP(factura.saldo)}</span></div>` : ''}
   </div>
 
   <div class="section">
@@ -206,7 +185,7 @@ export function usePrintTicket() {
 
   <div class="footer">
     <div class="thanks">Gracias por su compra</div>
-    <div>Conserve este comprobante para control y soporte.</div>
+    <div>Conserve este comprobante para control de entrega, pago y soporte.</div>
     <div style="margin-top:3px">Sistema JORDAN - Gestion 2026</div>
   </div>
 </div>
