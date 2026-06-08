@@ -129,9 +129,12 @@
         </thead>
         <tbody>
           <tr v-for="m in egresosRaw.slice(0, 12)" :key="m.id" class="border-b border-gray-50">
-            <td class="py-2 text-gray-500">{{ formatDate(m.fecha) }}</td>
+            <td class="py-2 text-gray-500">{{ formatReportDate(m.fecha) }}</td>
             <td class="py-2"><EstadoBadge :estado="m.tipo" /></td>
-            <td class="py-2 font-medium text-gray-800">{{ m.concepto ?? '-' }}</td>
+            <td class="py-2 font-medium text-gray-800">
+              {{ m.concepto ?? '-' }}
+              <span v-if="m.observaciones" class="block text-xs font-normal text-gray-500">{{ m.observaciones }}</span>
+            </td>
             <td class="py-2 text-gray-500">{{ m.trabajador?.nombre ?? '-' }}</td>
             <td class="py-2 text-right font-semibold text-orange-600">{{ formatCurrency(m.monto) }}</td>
           </tr>
@@ -203,7 +206,7 @@
             </thead>
             <tbody>
               <tr v-for="m in movimientosTrabajadores.slice(0, 10)" :key="m.key" class="border-b border-gray-50">
-                <td class="py-2 text-gray-500">{{ formatDate(m.fecha) }}</td>
+                <td class="py-2 text-gray-500">{{ formatReportDate(m.fecha) }}</td>
                 <td class="py-2 font-medium text-gray-800">{{ m.trabajador }}</td>
                 <td class="py-2 text-gray-500">{{ m.tipo }}</td>
                 <td class="py-2 text-right font-semibold">{{ formatCurrency(m.monto) }}</td>
@@ -362,7 +365,7 @@
               class="border-b border-gray-50"
             >
               <td class="py-2 font-medium">{{ r.numero }}</td>
-              <td class="py-2 text-gray-500">{{ formatDate(r.fecha) }}</td>
+              <td class="py-2 text-gray-500">{{ formatReportDate(r.fecha) }}</td>
               <td class="py-2 text-gray-500">{{ r.domiciliario?.nombre ?? '—' }}</td>
               <td class="py-2 text-center text-gray-600">{{ r.itemsRuta?.length ?? '—' }}</td>
               <td class="py-2"><EstadoBadge :estado="r.estado" /></td>
@@ -379,7 +382,7 @@
 
 <script setup lang="ts">
 import { BarChart3, CheckCircle, DollarSign, HandCoins, Package, ReceiptText, Scale, WalletCards } from 'lucide-vue-next'
-import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
+import { formatCurrency, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -534,19 +537,20 @@ function setReportType(type: ReportType) {
     return
   }
 
-  if (type === 'diario') {
-    fechaReferencia.value = todayISO()
-  }
-
   applyReportType(type)
 }
 
 function fechaKey(value: string | Date) {
   if (typeof value === 'string') {
-    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (match) return `${match[1]}-${match[2]}-${match[3]}`
+    const trimmed = value.trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
   }
   return localISO(value instanceof Date ? value : new Date(value))
+}
+
+function formatReportDate(value: string | Date | null | undefined) {
+  if (!value) return emptyLabel
+  return displayDateISO(fechaKey(value))
 }
 
 function isDateInActiveRange(value: string | Date) {
@@ -601,11 +605,11 @@ function facturasMovimientos() {
   for (const venta of ventasRaw.value) {
     if (venta.fecha && isDateInActiveRange(venta.fecha)) {
       movimientos.push([
-        formatDate(venta.fecha),
+        formatReportDate(venta.fecha),
         'FACTURA',
         venta.cliente?.nombre ?? emptyLabel,
         venta.numero ?? emptyLabel,
-        formatDate(venta.fecha),
+        formatReportDate(venta.fecha),
         venta.estado ?? emptyLabel,
         Number(venta.totalVenta ?? 0),
         0,
@@ -617,11 +621,11 @@ function facturasMovimientos() {
     for (const pago of venta.pagos ?? []) {
       if (!pago.fecha || !isDateInActiveRange(pago.fecha)) continue
       movimientos.push([
-        formatDate(pago.fecha),
+        formatReportDate(pago.fecha),
         pago.numero ? `PAGO ${pago.numero}` : 'PAGO',
         venta.cliente?.nombre ?? emptyLabel,
         venta.numero ?? emptyLabel,
-        formatDate(venta.fecha),
+        formatReportDate(venta.fecha),
         venta.estado ?? emptyLabel,
         Number(venta.totalVenta ?? 0),
         Number(pago.monto ?? 0),
@@ -899,9 +903,10 @@ function resumenTrabajadores() {
 
 function egresosRows() {
   return egresosRaw.value.map((m: any) => [
-    formatDate(m.fecha),
+    formatReportDate(m.fecha),
     m.tipo ?? emptyLabel,
     m.concepto ?? emptyLabel,
+    m.observaciones ?? emptyLabel,
     m.trabajador?.nombre ?? emptyLabel,
     Number(m.monto ?? 0),
     m.medioPago ?? emptyLabel,
@@ -910,7 +915,7 @@ function egresosRows() {
 
 function laboresRows() {
   return laboresRaw.value.map((l: any) => [
-    formatDate(l.fecha),
+    formatReportDate(l.fecha),
     l.trabajador?.nombre ?? emptyLabel,
     l.laborTarifa?.laborTipo?.nombre ?? emptyLabel,
     l.cantidadRealizado ?? 0,
@@ -921,7 +926,7 @@ function laboresRows() {
 
 function movimientosTrabajadoresRows() {
   return movimientosTrabajadores.value.map((m: any) => [
-    formatDate(m.fecha),
+    formatReportDate(m.fecha),
     m.trabajador,
     m.tipo,
     Number(m.monto ?? 0),
@@ -930,7 +935,7 @@ function movimientosTrabajadoresRows() {
 
 function deudasTrabajadoresRows() {
   return anticiposRaw.value.map((a: any) => [
-    formatDate(a.fecha),
+    formatReportDate(a.fecha),
     a.trabajador?.nombre ?? emptyLabel,
     a.numero ?? emptyLabel,
     a.tipo ?? emptyLabel,
@@ -1064,7 +1069,7 @@ function exportExcelEmpresarial() {
     const pedidoTotal = totalPedido(p)
     if (!detalles.length) {
       return [[
-        formatDate(p.fecha),
+        formatReportDate(p.fecha),
         p.numero,
         p.cliente?.nombre ?? emptyLabel,
         trabajadorPedido(p).nombre,
@@ -1081,7 +1086,7 @@ function exportExcelEmpresarial() {
       ]]
     }
     return detalles.map((d: any) => [
-      formatDate(p.fecha),
+      formatReportDate(p.fecha),
       p.numero,
       p.cliente?.nombre ?? emptyLabel,
       trabajadorPedido(p).nombre,
@@ -1161,7 +1166,7 @@ function exportExcelEmpresarial() {
         ])}
         ${htmlTable('Resumen consolidado por fecha', ['Fecha', 'Pedidos', 'Entregados', 'Pendientes', 'Total pedidos', 'Ventas facturadas', 'Cobrado real'], resumenPorFecha().map((d: any) => [d.fecha, d.pedidos, d.entregados, d.pendientes, d.totalPedidos, d.ventas, d.cobrado]), reportColors.blue, [4, 5, 6], 'Consolida la operacion diaria separando pedidos, facturacion y pagos reales.')}
         ${htmlTable('Trazabilidad de facturas y cobros', ['Fecha movimiento', 'Movimiento', 'Cliente', 'Factura', 'Fecha factura', 'Estado factura', 'Total factura', 'Valor cobrado', 'Saldo actual', 'Interpretacion'], facturasMovimientos(), reportColors.green, [6, 7, 8], 'Relaciona cada factura y cada pago/cancelacion con su cliente, saldo e interpretacion contable.')}
-        ${htmlTable('Caja y egresos', ['Fecha', 'Tipo', 'Concepto', 'Trabajador', 'Monto', 'Medio'], egresosRows(), reportColors.orange, [4], 'Lista salidas de caja del periodo, incluyendo egresos generales, pagos a trabajadores, anticipos y prestamos.')}
+        ${htmlTable('Caja y egresos', ['Fecha', 'Tipo', 'Concepto', 'Nota', 'Trabajador', 'Monto', 'Medio'], egresosRows(), reportColors.orange, [5], 'Lista salidas de caja del periodo, incluyendo egresos generales, pagos a trabajadores, anticipos y prestamos.')}
         ${htmlTable('Pedidos y pacas por trabajador', ['Trabajador', 'Pedidos', 'Entregados', 'Pacas', 'Productos vendidos', 'Total pedidos'], pedidosTrabajadorProductoRows(), reportColors.blue, [5], 'Agrupa pedidos del periodo por trabajador y detalla cuantas pacas/productos vendio cada uno.')}
         ${htmlTable('Trabajadores - labores', ['Fecha', 'Trabajador', 'Labor', 'Cantidad', 'Valor', 'Observaciones'], laboresRows(), reportColors.green, [4], 'Detalle de labores registradas y valor generado por trabajador.')}
         ${htmlTable('Trabajadores - pagos, anticipos y abonos', ['Fecha', 'Trabajador', 'Movimiento', 'Monto'], movimientosTrabajadoresRows(), reportColors.navy, [3], 'Consolida pagos entregados, anticipos/prestamos y abonos de deuda del periodo.')}
@@ -1220,7 +1225,7 @@ async function exportExcel() {
       const detalles = p.detalles ?? []
       if (!detalles.length) {
         return [{
-          fecha: formatDate(p.fecha),
+          fecha: formatReportDate(p.fecha),
           pedido: p.numero,
           cliente: p.cliente?.nombre ?? '—',
           estado: p.estado,
@@ -1234,7 +1239,7 @@ async function exportExcel() {
       }
       const totalPedido = detalles.reduce((s: number, d: any) => s + Number(d.subtotal ?? 0), 0)
       return detalles.map((d: any) => ({
-        fecha: formatDate(p.fecha),
+        fecha: formatReportDate(p.fecha),
         pedido: p.numero,
         cliente: p.cliente?.nombre ?? '—',
         estado: p.estado,
@@ -1320,7 +1325,7 @@ async function exportExcel() {
         cliente: c.cliente?.nombre ?? '—',
         saldoPendiente: Number(c.saldoPendiente ?? 0),
         venta: c.venta?.numero ?? '—',
-        fechaVenta: c.venta?.fecha ? formatDate(c.venta.fecha) : '—',
+        fechaVenta: c.venta?.fecha ? formatReportDate(c.venta.fecha) : '—',
         estadoVenta: c.venta?.estado ?? '—',
       })),
     )
@@ -1330,7 +1335,7 @@ async function exportExcel() {
     const wsRutas = XLSX.utils.json_to_sheet(
       rutasRaw.value.map((r: any) => ({
         numero: r.numero,
-        fecha: formatDate(r.fecha),
+        fecha: formatReportDate(r.fecha),
         estado: r.estado,
         trabajador: r.domiciliario?.nombre ?? '—',
         pedidos: r.itemsRuta?.length ?? 0,
@@ -1536,23 +1541,25 @@ async function exportPdf() {
     autoTable(doc, {
       startY: addPdfSection(doc, 'Caja y egresos', 'Salidas reales de caja registradas en el periodo: egresos generales, pagos a trabajadores, anticipos y prestamos.'),
       ...pdfTableDefaults(),
-      head: [['Fecha', 'Tipo', 'Concepto', 'Trabajador', 'Monto', 'Medio']],
+      head: [['Fecha', 'Tipo', 'Concepto', 'Nota', 'Trabajador', 'Monto', 'Medio']],
       body: egresosRows().map(row => [
         row[0],
         row[1],
         row[2],
         row[3],
-        formatCurrency(row[4]),
-        row[5],
+        row[4],
+        formatCurrency(row[5]),
+        row[6],
       ]),
       styles: { fontSize: 7.5, cellPadding: 2 },
       columnStyles: {
         0: { cellWidth: 18 },
-        1: { cellWidth: 31 },
-        2: { cellWidth: 72 },
-        3: { cellWidth: 38 },
-        4: { cellWidth: 24, halign: 'right' },
-        5: { cellWidth: 24 },
+        1: { cellWidth: 28 },
+        2: { cellWidth: 54 },
+        3: { cellWidth: 64 },
+        4: { cellWidth: 34 },
+        5: { cellWidth: 24, halign: 'right' },
+        6: { cellWidth: 22 },
       },
       headStyles: { fillColor: [234, 88, 12], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [255, 247, 237] },
@@ -1727,7 +1734,7 @@ async function exportPdf() {
       body: pedidosRaw.value
         .flatMap((p: any) =>
           (p.detalles ?? []).map((d: any) => [
-            formatDate(p.fecha),
+            formatReportDate(p.fecha),
             p.numero,
             p.cliente?.nombre ?? '—',
             trabajadorPedido(p).nombre,

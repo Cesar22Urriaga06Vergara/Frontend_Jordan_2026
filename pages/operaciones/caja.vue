@@ -129,6 +129,7 @@
               <th class="py-2 pr-3 font-medium">Hora</th>
               <th class="py-2 pr-3 font-medium">Tipo</th>
               <th class="py-2 pr-3 font-medium">Concepto</th>
+              <th class="py-2 pr-3 font-medium">Nota</th>
               <th class="py-2 pr-3 font-medium">Medio</th>
               <th class="py-2 font-medium">Monto</th>
             </tr>
@@ -145,6 +146,7 @@
                 {{ e.concepto }}
                 <span v-if="e.trabajador?.nombre" class="text-xs text-gray-400 block">{{ e.trabajador.nombre }}</span>
               </td>
+              <td class="py-2 pr-3 text-gray-500 min-w-56">{{ e.observaciones || '—' }}</td>
               <td class="py-2 pr-3 text-gray-500">{{ e.medioPago }}</td>
               <td class="py-2 text-right text-red-600 font-semibold whitespace-nowrap">{{ formatCurrency(e.monto) }}</td>
             </tr>

@@ -65,16 +65,17 @@
             <th class="px-4 py-3 font-medium">Fecha</th>
             <th class="px-4 py-3 font-medium">Trabajador</th>
             <th class="px-4 py-3 font-medium">Pedidos</th>
+            <th class="px-4 py-3 font-medium">Notas</th>
             <th class="px-4 py-3 font-medium">Estado</th>
             <th class="px-4 py-3 font-medium">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="6" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
           </tr>
           <tr v-else-if="!rutas.length">
-            <td colspan="6" class="px-4 py-10 text-center text-gray-400">Sin rutas para los filtros seleccionados.</td>
+            <td colspan="7" class="px-4 py-10 text-center text-gray-400">Sin rutas para los filtros seleccionados.</td>
           </tr>
           <tr
             v-for="r in rutas"
@@ -85,6 +86,12 @@
             <td class="px-4 py-3 text-gray-600">{{ formatDate(r.fecha) }}</td>
             <td class="px-4 py-3 text-gray-600">{{ r.domiciliario?.nombre ?? '—' }}</td>
             <td class="px-4 py-3 text-center text-gray-600">{{ r.itemsRuta?.length ?? '—' }}</td>
+            <td class="px-4 py-3 text-left text-gray-600">
+              <span v-if="r.observaciones" class="block max-w-[260px] truncate" :title="r.observaciones">
+                {{ r.observaciones }}
+              </span>
+              <span v-else class="text-gray-300">-</span>
+            </td>
             <td class="px-4 py-3"><EstadoBadge :estado="r.estado" /></td>
             <td class="px-4 py-3 text-right">
               <div class="flex justify-end gap-2">

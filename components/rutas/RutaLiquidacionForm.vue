@@ -112,6 +112,10 @@
         <p class="font-semibold text-orange-700">${{ numEs(ctx.totalCarteraCalculado) }}</p>
       </div>
       <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <p class="text-gray-500">Gastos ruta</p>
+        <p class="font-semibold text-red-700">${{ numEs(ctx.liqForm.gastosRuta) }}</p>
+      </div>
+      <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
         <p class="text-gray-500">Efectivo reportado</p>
         <p class="font-semibold text-gray-700">${{ numEs(ctx.totalEfectivoCalculado) }}</p>
       </div>
@@ -128,19 +132,25 @@
     <div class="rounded-lg border border-gray-200 bg-white p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
       <p class="text-gray-600">Total recibido: <strong class="text-gray-900">${{ numEs(ctx.totalRecibidoCalculado) }}</strong></p>
       <p class="text-orange-600">Total cartera: <strong>${{ numEs(ctx.totalCarteraCalculado) }}</strong></p>
+      <p class="text-red-600">Gastos ruta: <strong>${{ numEs(ctx.liqForm.gastosRuta) }}</strong></p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3">
       <FormField label="Gastos de ruta ($)">
         <input v-model.number="ctx.liqForm.gastosRuta" class="form-input" type="number" min="0" step="1" @blur="useMoneyInput().handleMoneyBlur" />
       </FormField>
-      <FormField label="Notas">
-        <textarea v-model="ctx.liqForm.notas" rows="2" class="form-input resize-none" />
+      <FormField :label="Number(ctx.liqForm.gastosRuta || 0) > 0 ? 'Nota del gasto *' : 'Notas'">
+        <textarea
+          v-model="ctx.liqForm.notas"
+          rows="2"
+          class="form-input resize-none"
+          :placeholder="Number(ctx.liqForm.gastosRuta || 0) > 0 ? 'Detalle el motivo del egreso de esta ruta' : ''"
+        />
       </FormField>
     </div>
 
     <div class="flex justify-end gap-2 pt-2">
-      <button class="btn-primary inline-flex items-center gap-2" :disabled="saving" @click="showReview = true">
+      <button class="btn-primary inline-flex items-center gap-2" :disabled="saving" @click="openReview">
         {{ saving ? 'Guardando...' : 'Revisar liquidacion' }}
       </button>
     </div>
@@ -168,7 +178,7 @@
           </div>
 
           <div class="flex-1 overflow-y-auto p-4 sm:p-5">
-            <div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-6">
+            <div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-7">
               <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p class="text-gray-500">Entregado</p>
                 <p class="font-semibold text-green-700">${{ numEs(ctx.totalEntregadoCalculado) }}</p>
@@ -184,6 +194,10 @@
               <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p class="text-gray-500">Cartera</p>
                 <p class="font-semibold text-orange-700">${{ numEs(ctx.totalCarteraCalculado) }}</p>
+              </div>
+              <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p class="text-gray-500">Gastos ruta</p>
+                <p class="font-semibold text-red-700">${{ numEs(ctx.liqForm.gastosRuta) }}</p>
               </div>
               <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p class="text-gray-500">No entregado</p>
@@ -250,7 +264,7 @@ import { ref, toValue } from 'vue'
 import { useRutaLiquidacion } from '~/composables/useRutaLiquidacion'
 import { useMoneyInput } from '~/composables/useMoneyInput'
 
-defineProps<{
+const props = defineProps<{
   saving: boolean
   ctx: ReturnType<typeof useRutaLiquidacion>
 }>()
@@ -260,6 +274,15 @@ defineEmits<{
 }>()
 
 const showReview = ref(false)
+const notify = useNotification()
+
+function openReview() {
+  if (Number(props.ctx.liqForm.gastosRuta || 0) > 0 && !props.ctx.liqForm.notas?.trim()) {
+    notify.error('La nota del gasto de ruta es obligatoria cuando registras un gasto.')
+    return
+  }
+  showReview.value = true
+}
 
 function numEs(v: unknown) {
   return Number(toValue(v)).toLocaleString('es-CO')

@@ -28,7 +28,7 @@
       </div>
       <div class="card">
         <p class="text-sm text-gray-500">Unidades producidas</p>
-        <p class="mt-1 text-2xl font-bold text-gray-800">{{ totalProducidoHoy }}</p>
+        <p class="mt-1 text-2xl font-bold text-gray-800">{{ formatQuantity(totalProducidoHoy) }}</p>
       </div>
     </div>
 
@@ -49,7 +49,7 @@
         <tbody>
           <tr v-for="item in produccionHoy" :key="item.id ?? item.productoId" class="border-b border-gray-50">
             <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
-            <td class="py-2 text-right text-gray-600">{{ item.cantidad }}</td>
+            <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidad) }}</td>
           </tr>
           <tr v-if="!produccionHoy.length">
             <td colspan="2" class="py-6 text-center text-gray-400">Sin producción registrada</td>
@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { CheckCircle, Minus, RefreshCw } from 'lucide-vue-next'
-import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, formatQuantity, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 

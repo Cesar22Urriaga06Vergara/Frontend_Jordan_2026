@@ -256,13 +256,20 @@ export function useRutaLiquidacion() {
     const totalCartera = toNumberOrZero(totalCarteraCalculado.value)
     const totalEntregado = toNumberOrZero(totalEntregadoCalculado.value)
     const diferencia = Number((totalEntregado - totalRecibido - totalCartera).toFixed(2))
+    const gastosRuta = toNumberOrZero(liqForm.gastosRuta)
+    const notaGastoRuta = liqForm.notas?.trim() ?? ''
+
+    if (gastosRuta > 0 && !notaGastoRuta) {
+      notify.error('La nota del gasto de ruta es obligatoria cuando registras un gasto.')
+      return false
+    }
 
     const partesObs = [
       efectivoRecibido > 0 ? `Efectivo: ${efectivoRecibido}` : '',
       transferenciaRecibida > 0 ? `Transferencia: ${transferenciaRecibida}` : '',
       totalCartera > 0 ? `Cartera: ${totalCartera}` : '',
-      toNumberOrZero(liqForm.gastosRuta) > 0 ? `Gastos de ruta: ${toNumberOrZero(liqForm.gastosRuta)}` : '',
-      liqForm.notas?.trim(),
+      gastosRuta > 0 ? `Gastos de ruta: ${gastosRuta}` : '',
+      gastosRuta > 0 ? `Nota gasto ruta: ${notaGastoRuta}` : notaGastoRuta,
     ]
       .filter(Boolean)
       .join(' | ')
@@ -274,6 +281,7 @@ export function useRutaLiquidacion() {
       diferencia,
       efectivoRecibido,
       transferenciaRecibida,
+      gastosRuta,
       observaciones: partesObs || undefined,
       pedidos: liqForm.pedidos.map((p) => ({
         pedidoId: p.pedidoId,

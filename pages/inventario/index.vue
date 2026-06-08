@@ -41,9 +41,9 @@
         <tbody>
           <tr v-for="item in stockBajo" :key="item.id" class="border-b border-amber-100">
             <td class="py-2 font-medium text-gray-900">{{ item.producto?.nombre ?? item.productoId }}</td>
-            <td class="py-2 text-right text-amber-900">{{ item.stockActual }}</td>
-            <td class="py-2 text-right text-amber-900">{{ item.stockMinimo }}</td>
-            <td class="py-2 text-right font-semibold text-amber-900">{{ faltanteStock(item) }}</td>
+            <td class="py-2 text-right text-amber-900">{{ formatQuantity(item.stockActual) }}</td>
+            <td class="py-2 text-right text-amber-900">{{ formatQuantity(item.stockMinimo) }}</td>
+            <td class="py-2 text-right font-semibold text-amber-900">{{ formatQuantity(faltanteStock(item)) }}</td>
           </tr>
         </tbody>
       </table>
@@ -67,8 +67,8 @@
         <tbody>
           <tr v-for="item in inventarioActual" :key="item.id" class="border-b border-gray-50">
             <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
-            <td class="py-2 text-right text-gray-600">{{ item.stockActual }}</td>
-            <td class="py-2 text-right text-gray-600">{{ item.stockMinimo }}</td>
+            <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.stockActual) }}</td>
+            <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.stockMinimo) }}</td>
             <td class="py-2">
               <span class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="stockEstaBajo(item) ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-700'">
                 {{ stockEstaBajo(item) ? 'Bajo' : 'OK' }}
@@ -101,7 +101,7 @@
           <tbody>
             <tr v-for="item in inventarioInicial" :key="item.id" class="border-b border-gray-50">
               <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
-              <td class="py-2 text-right text-gray-600">{{ item.cantidadInicial }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidadInicial) }}</td>
             </tr>
             <tr v-if="!inventarioInicial.length">
               <td colspan="2" class="py-4 text-center text-gray-400">Sin apertura para la fecha seleccionada</td>
@@ -122,7 +122,7 @@
           <tbody>
             <tr v-for="item in produccion" :key="item.id" class="border-b border-gray-50">
               <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
-              <td class="py-2 text-right text-gray-600">{{ item.cantidad }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidad) }}</td>
             </tr>
             <tr v-if="!produccion.length">
               <td colspan="2" class="py-4 text-center text-gray-400">Sin producción registrada</td>
@@ -147,9 +147,9 @@
           <tbody>
             <tr v-for="item in cierreInventario" :key="item.id" class="border-b border-gray-50">
               <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
-              <td class="py-2 text-right text-gray-600">{{ item.cantidadEsperada }}</td>
-              <td class="py-2 text-right text-gray-600">{{ item.cantidadContada }}</td>
-              <td class="py-2 text-right font-semibold" :class="Number(item.diferencia ?? 0) === 0 ? 'text-gray-400' : 'text-amber-700'">{{ item.diferencia }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidadEsperada) }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidadContada) }}</td>
+              <td class="py-2 text-right font-semibold" :class="Number(item.diferencia ?? 0) === 0 ? 'text-gray-400' : 'text-amber-700'">{{ formatQuantity(item.diferencia) }}</td>
             </tr>
             <tr v-if="!cierreInventario.length">
               <td colspan="4" class="py-4 text-center text-gray-400">Cierre pendiente</td>
@@ -283,7 +283,7 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Boxes, Droplets, Factory, Pencil, Plus, RefreshCw } from 'lucide-vue-next'
-import { formatDate, todayISO } from '~/utils/formats'
+import { formatDate, formatQuantity, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 

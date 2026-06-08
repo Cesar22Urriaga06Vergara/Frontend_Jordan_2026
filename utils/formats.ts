@@ -9,6 +9,15 @@ export const formatCurrency = (value: number | string): string => {
   }).format(safeNum)
 }
 
+export const formatQuantity = (value: number | string | null | undefined): string => {
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0)
+  const safeNum = Number.isFinite(num) ? num : 0
+  return new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(safeNum)
+}
+
 const parseCalendarDate = (date: string | Date | null | undefined): Date | null => {
   if (!date) return null
   if (date instanceof Date) return date
