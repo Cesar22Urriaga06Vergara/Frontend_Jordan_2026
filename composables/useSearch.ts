@@ -4,6 +4,13 @@ export interface SearchFilter<T> {
   operator?: 'equals' | 'contains' | 'startsWith' | 'gt' | 'lt'
 }
 
+function normalizeSearchText(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
 export function useSearch<T extends object>(items: Ref<T[]>) {
   const searchQuery = ref('')
   const searchFields = ref<(keyof T)[]>([])
@@ -14,10 +21,10 @@ export function useSearch<T extends object>(items: Ref<T[]>) {
 
     // Aplicar búsqueda
     if (searchQuery.value && searchFields.value.length > 0) {
-      const query = searchQuery.value.toLowerCase()
+      const query = normalizeSearchText(searchQuery.value)
       result = result.filter((item) =>
         searchFields.value.some((field) => {
-          const value = String((item as any)[field] ?? '').toLowerCase()
+          const value = normalizeSearchText((item as any)[field])
           return value.includes(query)
         })
       )
@@ -34,9 +41,9 @@ export function useSearch<T extends object>(items: Ref<T[]>) {
             case 'equals':
               return itemValue === filter.value
             case 'contains':
-              return String(itemValue).includes(String(filter.value))
+              return normalizeSearchText(itemValue).includes(normalizeSearchText(filter.value))
             case 'startsWith':
-              return String(itemValue).startsWith(String(filter.value))
+              return normalizeSearchText(itemValue).startsWith(normalizeSearchText(filter.value))
             case 'gt':
               return itemValue > filter.value
             case 'lt':

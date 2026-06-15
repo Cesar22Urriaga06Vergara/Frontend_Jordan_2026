@@ -115,49 +115,90 @@
 
     <!-- TAB: Registrar labor -->
     <div v-if="tabActivo === 'labores'" class="space-y-4">
-      <div class="card space-y-4">
-        <div>
-          <h2 class="font-semibold text-gray-800">Registrar labor</h2>
-          <p class="text-sm text-gray-500">Carga unidades trabajadas y valor a pagar automaticamente.</p>
-        </div>
+      <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="card space-y-5">
+          <div>
+            <h2 class="font-semibold text-gray-800">Registrar labor</h2>
+            <p class="text-sm text-gray-500">
+              El valor se define aquí. Catálogo solo guarda la modalidad de pago del trabajador.
+            </p>
+          </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3 items-end">
           <FormField label="Trabajador *">
-            <select v-model="laborForm.trabajadorId" class="form-input" @change="fetchLaboresDisponibles">
-              <option :value="undefined">Seleccionar…</option>
-              <option v-for="t in trabajadores" :key="t.id" :value="t.id">{{ t.nombre }}</option>
-            </select>
-          </FormField>
-          <FormField label="Tipo de labor *">
-            <select v-model.number="laborForm.laborTipoId" class="form-input" @change="onLaborTipoChange">
-              <option :value="undefined">Seleccionar…</option>
-              <option v-for="l in laborOpciones" :key="l.id" :value="l.id">
-                {{ l.nombre }} — {{ tipoPagoLabel(l.tipo) }}
+            <select v-model="laborForm.trabajadorId" class="form-input" @change="onTrabajadorChange">
+              <option :value="undefined">Seleccionar trabajador…</option>
+              <option v-for="t in trabajadores" :key="t.id" :value="t.id">
+                {{ t.nombre }} · {{ modalidadPagoLabel(t.modalidadPago) }}
               </option>
             </select>
           </FormField>
-          <FormField :label="cantidadLabel">
-            <input v-model.number="laborForm.cantidad" class="form-input" type="number" min="1" step="0.01" />
-          </FormField>
-          <FormField :label="valorUnitarioLabel">
-            <input v-model.number="laborForm.valorUnitario" class="form-input" type="number" min="0" step="1" :placeholder="valorUnitarioPlaceholder" />
-          </FormField>
-          <FormField label="Fecha">
-            <input v-model="laborForm.fecha" class="form-input" type="date" />
-          </FormField>
-          <FormField label="Notas">
-            <input v-model="laborForm.notas" class="form-input" />
-          </FormField>
+
+          <div
+            v-if="trabajadorSeleccionado"
+            class="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900"
+          >
+            <p class="font-medium">{{ trabajadorSeleccionado.nombre }}</p>
+            <p class="mt-1 text-indigo-700">
+              Modalidad: {{ modalidadPagoLabel(trabajadorSeleccionado.modalidadPago) }}
+              <span v-if="trabajadorSeleccionado.modalidadPago === 'POR_JORNADA' && tarifaJornadaReferencia > 0">
+                · Referencia jornada {{ formatCurrency(tarifaJornadaReferencia) }}
+              </span>
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField label="Tipo de labor *">
+              <select v-model.number="laborForm.laborTipoId" class="form-input" @change="onLaborTipoChange">
+                <option :value="undefined">Seleccionar labor…</option>
+                <option v-for="l in laborOpciones" :key="l.id" :value="l.id">
+                  {{ l.nombre }}
+                </option>
+              </select>
+            </FormField>
+            <FormField label="Fecha">
+              <input v-model="laborForm.fecha" class="form-input" type="date" />
+            </FormField>
+            <FormField :label="cantidadLabel">
+              <input v-model.number="laborForm.cantidad" class="form-input" type="number" min="0.01" step="0.01" />
+            </FormField>
+            <FormField :label="valorUnitarioLabel">
+              <input
+                v-model.number="laborForm.valorUnitario"
+                class="form-input"
+                type="number"
+                min="1"
+                step="1"
+                :placeholder="valorUnitarioPlaceholder"
+              />
+            </FormField>
+            <FormField label="Notas" class="md:col-span-2">
+              <input v-model="laborForm.notas" class="form-input" placeholder="Opcional" />
+            </FormField>
+          </div>
+
+          <button
+            class="btn-primary inline-flex items-center gap-2"
+            :disabled="savingLabor || !puedeRegistrarLabor"
+            @click="registrarLabor"
+          >
+            <ClipboardList class="h-4 w-4" />
+            {{ savingLabor ? 'Guardando…' : `Registrar labor ${formatCurrency(montoEstimado)}` }}
+          </button>
         </div>
 
-        <button
-          class="btn-primary inline-flex items-center gap-2"
-          :disabled="savingLabor || !laborForm.trabajadorId || !laborForm.laborTipoId || !laborForm.cantidad || !laborForm.valorUnitario"
-          @click="registrarLabor"
-        >
-          <ClipboardList class="h-4 w-4" />
-          {{ savingLabor ? 'Guardando…' : `Registrar ${formatCurrency(montoEstimado)}` }}
-        </button>
+        <aside class="card h-fit space-y-4 bg-slate-50">
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Cálculo</p>
+            <h3 class="mt-1 font-semibold text-gray-800">Total a acreditar</h3>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <p class="text-sm text-gray-500">{{ calculoDescripcion }}</p>
+            <p class="mt-3 text-3xl font-black text-gray-900">{{ formatCurrency(montoEstimado) }}</p>
+          </div>
+          <p class="text-xs text-gray-500">
+            Este monto se suma al saldo pendiente del trabajador. Luego lo pagas desde la pestaña Resumen.
+          </p>
+        </aside>
       </div>
 
       <!-- Labores del día -->
@@ -174,8 +215,8 @@
             <tr class="text-center text-gray-500 border-b text-xs uppercase">
               <th class="pb-2 font-medium">Trabajador</th>
               <th class="pb-2 font-medium">Labor</th>
-              <th class="pb-2 font-medium">Cant.</th>
-              <th class="pb-2 font-medium">Valor</th>
+              <th class="pb-2 font-medium">Unidades</th>
+              <th class="pb-2 font-medium">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -183,7 +224,7 @@
               <td class="py-1.5">{{ l.trabajador?.nombre ?? '—' }}</td>
               <td class="py-1.5">{{ l.laborTarifa?.laborTipo?.nombre ?? '—' }}</td>
               <td class="py-1.5 text-center">{{ l.cantidadRealizado ?? '—' }}</td>
-              <td class="py-1.5 text-right">{{ formatCurrency(Number(l.montoAPagar ?? 0)) }}</td>
+              <td class="py-1.5 text-right font-medium text-green-700">{{ formatCurrency(Number(l.montoAPagar ?? 0)) }}</td>
             </tr>
             <tr v-if="!laboresHoy.length">
               <td colspan="4" class="py-4 text-center text-gray-400">Sin labores registradas hoy</td>
@@ -258,10 +299,20 @@
     >
       <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <h2 class="font-bold text-gray-800">Pagar a {{ trabSeleccionado?.nombre }}</h2>
-        <p class="text-sm text-gray-500">Saldo: {{ formatCurrency(trabSeleccionado?.saldoTotal ?? 0) }}</p>
+        <div class="rounded-lg border border-green-100 bg-green-50 px-4 py-3">
+          <p class="text-xs font-semibold uppercase text-green-700">Saldo pendiente</p>
+          <p class="mt-1 text-2xl font-black text-green-800">{{ formatCurrency(trabSeleccionado?.saldoTotal ?? 0) }}</p>
+        </div>
 
         <FormField label="Monto a pagar ($) *">
-          <input v-model.number="pagarForm.monto" class="form-input" type="number" min="0" />
+          <input v-model.number="pagarForm.monto" class="form-input" type="number" min="0" :max="trabSeleccionado?.saldoTotal ?? 0" />
+          <button
+            type="button"
+            class="mt-2 text-xs font-medium text-blue-600 hover:underline"
+            @click="pagarForm.monto = trabSeleccionado?.saldoTotal ?? 0"
+          >
+            Pagar saldo completo
+          </button>
         </FormField>
         <FormField label="Notas">
           <input v-model="pagarForm.notas" class="form-input" />
@@ -396,16 +447,35 @@ const trabajadoresActivos = computed(() => trabajadores.value.filter((t) => t.ac
 const saldoTotalTrabajadores = computed(() =>
   trabajadores.value.reduce((sum, t) => sum + Number(t?.saldoTotal ?? 0), 0),
 )
-const laborOpciones = computed(() =>
-  tiposLabor.value.map((tipo: any) => {
-    const tarifa = laboresDisponibles.value.find((l: any) => l.laborTipoId === tipo.id || l.laborTipo?.id === tipo.id)
+const trabajadorSeleccionado = computed(() =>
+  trabajadores.value.find((t) => t.id === laborForm.trabajadorId),
+)
+const laborOpciones = computed(() => {
+  const modalidad = trabajadorSeleccionado.value?.modalidadPago
+  const base = modalidad
+    ? tiposLabor.value.filter((tipo: any) => tipo.tipo === modalidad)
+    : tiposLabor.value
+
+  return base.map((tipo: any) => {
+    const tarifa = laboresDisponibles.value.find(
+      (l: any) => l.laborTipoId === tipo.id || l.laborTipo?.id === tipo.id,
+    )
     return {
       ...tipo,
       tarifaId: tarifa?.id,
-      tarifa: tarifa?.tarifa,
+      tarifa: Number(tarifa?.tarifa ?? 0),
     }
-  }),
-)
+  })
+})
+const tarifaJornadaReferencia = computed(() => {
+  if (trabajadorSeleccionado.value?.modalidadPago === 'POR_JORNADA') {
+    return Number(trabajadorSeleccionado.value?.tarifaBase ?? 0)
+  }
+  const tarifa = laboresDisponibles.value.find(
+    (l: any) => l?.laborTipo?.tipo === 'POR_JORNADA' && Number(l?.tarifa ?? 0) > 0,
+  )
+  return Number(tarifa?.tarifa ?? 0)
+})
 const laborSeleccionada = computed(() =>
   laborOpciones.value.find((l: any) => l.id === laborForm.laborTipoId),
 )
@@ -427,6 +497,30 @@ const valorUnitarioPlaceholder = computed(() => {
 const montoEstimado = computed(() =>
   Number(laborForm.cantidad ?? 0) * Number(laborForm.valorUnitario ?? 0),
 )
+const puedeRegistrarLabor = computed(() =>
+  Boolean(
+    laborForm.trabajadorId &&
+    laborForm.laborTipoId &&
+    Number(laborForm.cantidad ?? 0) > 0 &&
+    Number(laborForm.valorUnitario ?? 0) > 0,
+  ),
+)
+const calculoDescripcion = computed(() => {
+  const cantidad = Number(laborForm.cantidad ?? 0)
+  const valor = Number(laborForm.valorUnitario ?? 0)
+  if (!laborSeleccionada.value || cantidad <= 0 || valor <= 0) {
+    return 'Completa trabajador, labor, unidades y valor unitario.'
+  }
+  const unidad = tipoPagoLabel(laborSeleccionada.value.tipo)
+  return `${cantidad} ${unidad} × ${formatCurrency(valor)}`
+})
+
+function modalidadPagoLabel(modalidad?: string) {
+  if (modalidad === 'POR_HORA') return 'Por hora'
+  if (modalidad === 'POR_PACA') return 'Por paca'
+  if (modalidad === 'POR_JORNADA') return 'Por jornada'
+  return 'Sin definir'
+}
 
 function tipoPagoLabel(tipo?: string) {
   if (tipo === 'POR_HORA') return 'por hora'
@@ -459,25 +553,47 @@ async function fetchTiposLabor() {
   }
 }
 
+async function onTrabajadorChange() {
+  laborForm.laborTipoId = undefined
+  laborForm.valorUnitario = undefined
+  laborForm.cantidad = 1
+  await fetchLaboresDisponibles()
+}
+
 async function fetchLaboresDisponibles() {
-  if (!laborForm.trabajadorId) { laboresDisponibles.value = []; return }
+  if (!laborForm.trabajadorId) {
+    laboresDisponibles.value = []
+    return
+  }
   try {
     const res = await api.get(`/catalogos/trabajadores/${laborForm.trabajadorId}`)
     const d = apiResponse.unwrap(res) as any
     laboresDisponibles.value = d.laboresDisponibles ?? []
-    onLaborTipoChange()
   } catch {
     laboresDisponibles.value = []
-    notify.error('Error al cargar labores disponibles')
+    notify.error('Error al cargar datos del trabajador')
   }
 }
 
 function onLaborTipoChange() {
   const seleccionada = laborSeleccionada.value
-  laborForm.valorUnitario = seleccionada?.tarifa !== undefined && seleccionada?.tarifa !== null
-    ? Number(seleccionada.tarifa)
-    : undefined
-  if (seleccionada?.tipo === 'POR_JORNADA') laborForm.cantidad = 1
+  laborForm.valorUnitario = undefined
+
+  if (seleccionada?.tipo === 'POR_JORNADA') {
+    const referencia = tarifaJornadaReferencia.value
+    if (referencia > 0) laborForm.valorUnitario = referencia
+    laborForm.cantidad = 1
+    return
+  }
+
+  if (seleccionada?.tipo === 'POR_HORA') {
+    laborForm.cantidad = 8
+    return
+  }
+
+  if (seleccionada?.tipo === 'POR_PACA') {
+    laborForm.cantidad = 1
+  }
 }
 
 async function fetchLaboresHoy() {
@@ -547,7 +663,7 @@ async function registrarLabor() {
 
 function abrirPagarModal(t: any) {
   trabSeleccionado.value = t
-  pagarForm.monto = t.saldoTotal ?? 0
+  pagarForm.monto = Number(t.saldoTotal ?? 0)
   pagarForm.notas = ''
   modalPagar.value = true
 }
@@ -555,6 +671,11 @@ function abrirPagarModal(t: any) {
 async function pagarTrabajador() {
   savingPagar.value = true
   try {
+    const saldo = Number(trabSeleccionado.value?.saldoTotal ?? 0)
+    if (Number(pagarForm.monto ?? 0) > saldo) {
+      notify.error(`El monto no puede superar el saldo pendiente (${formatCurrency(saldo)})`)
+      return
+    }
     await api.post('/trabajadores-ops/pagos', {
       trabajadorId: trabSeleccionado.value.id,
       fecha: todayISO(),

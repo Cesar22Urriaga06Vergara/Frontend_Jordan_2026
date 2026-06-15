@@ -37,7 +37,7 @@
     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <StatCard label="Productos en stock" :value="String(inventarioActual.length)" :icon="Boxes" color="blue" :loading="loading" />
       <StatCard label="Alertas de stock" :value="String(stockBajo.length)" :icon="AlertTriangle" color="orange" :loading="loading" />
-      <StatCard label="Unidades producidas" :value="String(totalProducido)" :icon="Factory" color="green" :loading="loading" />
+      <StatCard label="Produccion usable" :value="String(totalProducido)" :icon="Factory" color="green" :loading="loading" />
       <StatCard label="Litros en tanques" :value="String(totalLitrosTanques)" :icon="Droplets" color="purple" :loading="loading" />
     </div>
 
@@ -63,7 +63,7 @@
     <section class="grid grid-cols-1 gap-5 xl:grid-cols-2">
       <div class="card">
         <h2 class="mb-4 font-semibold text-gray-700">Producción registrada</h2>
-        <ReportTable :headers="['Fecha', 'Producto', 'Cantidad', 'Observaciones']" :rows="produccionRows" />
+        <ReportTable :headers="produccionHeaders" :rows="produccionRows" />
       </div>
       <div class="card">
         <h2 class="mb-4 font-semibold text-gray-700">Stock actual</h2>
@@ -103,6 +103,7 @@ const loading = ref(true)
 const estadosDiarios = ref<any[]>([])
 const inventarioActual = ref<any[]>([])
 const stockBajo = ref<any[]>([])
+const produccionHeaders = ['Fecha', 'Producto', 'Usable', 'Filtradas', 'Reempacadas', 'Merma', 'Observaciones']
 
 function localISO(date: Date) {
   const y = date.getFullYear()
@@ -162,6 +163,9 @@ const produccionRows = computed(() =>
       displayDateISO(estado.fecha),
       item.producto?.nombre ?? `Producto ${item.productoId ?? ''}`,
       Number(item.cantidad ?? 0),
+      Number(item.cantidadFiltrada ?? 0),
+      Number(item.cantidadReempacada ?? 0),
+      Number(item.cantidadMerma ?? 0),
       item.observaciones ?? '-',
     ]),
   ),
@@ -261,7 +265,7 @@ async function exportExcel() {
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, ['Fecha', 'Estado', 'Inicial', 'Producción', 'Esperado', 'Real', 'Diferencia', 'Litros tanques'], resumenRows.value), 'Resumen')
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, ['Producto', 'Stock actual', 'Stock mínimo', 'Estado'], inventarioActualRows.value), 'StockActual')
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, ['Producto', 'Stock', 'Mínimo', 'Faltante'], stockBajoRows.value), 'StockBajo')
-    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, ['Fecha', 'Producto', 'Cantidad', 'Observaciones'], produccionRows.value), 'Produccion')
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, produccionHeaders, produccionRows.value), 'Produccion')
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, ['Fecha', 'Producto', 'Inicial', 'Producido', 'Salidas', 'Devoluciones', 'Esperado', 'Real', 'Dif.'], cierreInventarioRows.value), 'CierreInventario')
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, ['Fecha', 'Tanque', 'Litros'], tanquesRows.value), 'Tanques')
     XLSX.writeFile(wb, `reporte_inventario_produccion_${filtroDesde.value}_${filtroHasta.value}.xlsx`)
@@ -306,7 +310,7 @@ async function exportPdf() {
 
     autoTable(doc, {
       startY: ((doc as any).lastAutoTable?.finalY ?? 28) + 8,
-      head: [['Fecha', 'Producto', 'Cantidad', 'Observaciones']],
+      head: [produccionHeaders],
       body: produccionRows.value,
       styles: { fontSize: 8 },
       headStyles: { fillColor: [22, 163, 74] },

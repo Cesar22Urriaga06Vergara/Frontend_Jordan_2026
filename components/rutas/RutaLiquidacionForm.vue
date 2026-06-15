@@ -1,15 +1,31 @@
 <template>
   <div class="space-y-4">
     <div class="border rounded-lg p-3 bg-gray-50">
-      <div class="flex items-center justify-between gap-3 mb-3">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-3">
         <h3 class="text-sm font-semibold text-gray-700">Estado de entrega por pedido</h3>
-        <span class="text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2 py-1">
-          {{ ctx.liqForm.pedidos.length }} pedidos
-        </span>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            v-model="busquedaPedidos"
+            class="form-input text-sm py-2 sm:w-64"
+            type="search"
+            placeholder="Buscar por pedido o cliente..."
+            autocomplete="off"
+          />
+          <span class="text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-full px-2 py-1 whitespace-nowrap">
+            {{ pedidosVisibles.length }} / {{ ctx.liqForm.pedidos.length }} pedidos
+          </span>
+        </div>
       </div>
 
+      <p
+        v-if="busquedaPedidos.trim() && !pedidosVisibles.length"
+        class="mb-3 rounded-md border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+      >
+        Sin coincidencias para "{{ busquedaPedidos.trim() }}".
+      </p>
+
       <div class="space-y-2">
-        <div v-for="p in ctx.liqForm.pedidos" :key="p.pedidoId" class="p-3 bg-white rounded-lg border border-gray-200 space-y-3">
+        <div v-for="p in pedidosVisibles" :key="p.pedidoId" class="p-3 bg-white rounded-lg border border-gray-200 space-y-3">
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
               <p class="text-sm font-medium text-gray-700 truncate">{{ p.numero }}</p>
@@ -71,6 +87,47 @@
             />
           </div>
 
+          <div v-if="p.estadoEntrega === 'ENTREGADO_PAGADO' && ctx.estadoPagoPedidoLabel(p) !== 'Pagado completo'" class="text-xs text-orange-700">
+            {{ ctx.estadoPagoPedidoLabel(p) }}
+          </div>
+
+          <div v-if="!ctx.pedidoEntregado(p)" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <FormField v-if="p.estadoEntrega === 'REPROGRAMAR'" label="Fecha reprogramada *">
+              <input
+                v-model="p.fechaReprogramacion"
+                class="form-input text-sm"
+                type="date"
+                :min="todayISO()"
+              />
+            </FormField>
+
+            <FormField :label="p.estadoEntrega === 'REPROGRAMAR' ? 'Motivo reprogramacion *' : 'Motivo no entrega'">
+              <input
+                v-model="p.razonNoEntrega"
+                class="form-input text-sm"
+                type="text"
+                placeholder="Ej. cliente no recibe hoy"
+              />
+            </FormField>
+
+            <FormField v-if="p.estadoEntrega === 'REPROGRAMAR'" label="Detalle adicional">
+              <input
+                v-model="p.razonReprogramacion"
+                class="form-input text-sm"
+                type="text"
+                placeholder="Ej. entregar en la manana"
+              />
+            </FormField>
+
+            <FormField label="Observaciones">
+              <input
+                v-model="p.observaciones"
+                class="form-input text-sm"
+                type="text"
+              />
+            </FormField>
+          </div>
+
           <p v-if="p.estadoEntrega === 'ENTREGADO_PAGADO'" class="text-xs text-gray-500">
             Pagado: <strong>${{ ctx.montoPagadoPedido(p).toLocaleString('es-CO') }}</strong>
             - A cartera: <strong class="text-orange-600">${{ ctx.carteraPedido(p).toLocaleString('es-CO') }}</strong>
@@ -86,10 +143,10 @@
           </div>
 
           <p v-if="p.estadoEntrega === 'REPROGRAMAR'" class="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-            No genera venta ni descuenta inventario. El pedido queda pendiente para cargarlo en una proxima ruta.
+            No genera venta, caja ni cartera. Queda reprogramado y disponible para que el administrador lo suba a una ruta cuando corresponda (hoy o despues).
           </p>
           <p v-if="p.estadoEntrega === 'NO_ENTREGADO'" class="rounded-md border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-            No genera venta ni descuenta inventario. Queda registrado como no entregado en esta ruta.
+            No genera venta ni descuenta inventario. Queda registrado como no entregado y disponible para otra ruta.
           </p>
           <p v-if="p.estadoEntrega === 'CANCELAR'" class="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
             No genera venta ni descuenta inventario. El pedido queda cancelado.
@@ -210,7 +267,7 @@
             </div>
 
             <div class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              Revise productos y valores antes de confirmar. Los pedidos reprogramados quedan pendientes para una proxima ruta.
+              Revise productos y valores antes de confirmar. Los reprogramados no generan caja ni cartera hasta entregarse.
             </div>
 
             <div class="mt-4 overflow-hidden rounded-lg border border-gray-200">
@@ -225,7 +282,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="p in ctx.liqForm.pedidos" :key="`review-${p.pedidoId}`" class="border-t border-gray-100">
+                  <tr v-for="p in pedidosOrdenados" :key="`review-${p.pedidoId}`" class="border-t border-gray-100">
                     <td class="px-3 py-2 font-medium text-gray-800">{{ p.numero }}</td>
                     <td class="px-3 py-2 text-gray-600">{{ p.clienteNombre }}</td>
                     <td class="px-3 py-2 text-gray-600">{{ ctx.productosResumen(p) }}</td>
@@ -233,6 +290,9 @@
                       <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
                         {{ ctx.estadoEntregaLabel(p) }}
                       </span>
+                      <p v-if="p.estadoEntrega === 'REPROGRAMAR'" class="mt-1 text-xs text-gray-500">
+                        {{ p.fechaReprogramacion }}
+                      </p>
                     </td>
                     <td class="px-3 py-2 text-right font-semibold text-gray-800">${{ numEs(p.montoPedido) }}</td>
                   </tr>
@@ -260,9 +320,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toValue } from 'vue'
+import { computed, ref, toValue } from 'vue'
 import { useRutaLiquidacion } from '~/composables/useRutaLiquidacion'
 import { useMoneyInput } from '~/composables/useMoneyInput'
+import { todayISO } from '~/utils/formats'
 
 const props = defineProps<{
   saving: boolean
@@ -276,9 +337,32 @@ defineEmits<{
 const showReview = ref(false)
 const notify = useNotification()
 
+const pedidosVisibles = computed(() => toValue(props.ctx.pedidosVisibles))
+const pedidosOrdenados = computed(() => toValue(props.ctx.pedidosOrdenados))
+const busquedaPedidos = computed({
+  get: () => props.ctx.busquedaPedidos.value,
+  set: (value: string) => {
+    props.ctx.busquedaPedidos.value = value
+  },
+})
+
 function openReview() {
   if (Number(props.ctx.liqForm.gastosRuta || 0) > 0 && !props.ctx.liqForm.notas?.trim()) {
     notify.error('La nota del gasto de ruta es obligatoria cuando registras un gasto.')
+    return
+  }
+  const reprogramadoSinFecha = props.ctx.liqForm.pedidos.find(
+    (p) => p.estadoEntrega === 'REPROGRAMAR' && !p.fechaReprogramacion,
+  )
+  if (reprogramadoSinFecha) {
+    notify.error(`Selecciona la fecha de reprogramacion para ${reprogramadoSinFecha.numero}`)
+    return
+  }
+  const reprogramadoSinMotivo = props.ctx.liqForm.pedidos.find(
+    (p) => p.estadoEntrega === 'REPROGRAMAR' && !(p.razonReprogramacion || p.razonNoEntrega).trim(),
+  )
+  if (reprogramadoSinMotivo) {
+    notify.error(`Indica el motivo de reprogramacion para ${reprogramadoSinMotivo.numero}`)
     return
   }
   showReview.value = true

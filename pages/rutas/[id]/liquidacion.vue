@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { ArrowLeft, ClipboardList } from 'lucide-vue-next'
 import { useRutaLiquidacion } from '~/composables/useRutaLiquidacion'
 
@@ -82,6 +83,7 @@ const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
 const liq = useRutaLiquidacion()
+const draftRestored = ref(false)
 
 const id = computed(() => Number(route.params.id))
 
@@ -97,7 +99,7 @@ async function fetchRuta() {
     const res = await api.get(`/operaciones/rutas/${id.value}`)
     ruta.value = apiResponse.unwrap(res)
     if (ruta.value?.estado === 'EN_LIQUIDACION') {
-      liq.resetFromItemsRuta(ruta.value.itemsRuta ?? [])
+      draftRestored.value = liq.loadFromRuta(ruta.value.itemsRuta ?? [], ruta.value.id)
     }
   } catch {
     loadError.value = 'No se pudo cargar la ruta.'
@@ -108,6 +110,13 @@ async function fetchRuta() {
 }
 
 watch(id, () => fetchRuta())
+
+function confirmUnload(event: BeforeUnloadEvent) {
+  if (ruta.value?.estado === 'EN_LIQUIDACION' && liq.liqForm.pedidos.length > 0) {
+    event.preventDefault()
+    event.returnValue = 'Tienes cambios sin confirmar en la liquidación. ¿Seguro que quieres salir?'
+  }
+}
 
 async function liquidarRuta() {
   if (!ruta.value) return
@@ -126,5 +135,12 @@ async function liquidarRuta() {
   }
 }
 
-onMounted(fetchRuta)
+onMounted(() => {
+  window.addEventListener('beforeunload', confirmUnload)
+  fetchRuta()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', confirmUnload)
+})
 </script>

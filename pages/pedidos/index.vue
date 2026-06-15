@@ -32,11 +32,22 @@
           <label class="mb-1 block text-xs font-medium text-gray-700">Hasta</label>
           <input v-model="filters.fechaHasta" type="date" class="form-input w-full" @change="loadPedidos" />
         </div>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn-secondary text-sm px-3 py-2"
+            @click="resetFilters"
+          >
+            Limpiar filtros
+          </button>
+        </div>
       </div>
-      <div class="flex items-center justify-between text-xs text-gray-500">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-gray-500">
         <span>
           {{ pedidos.length > 0 ? `Mostrando ${pedidos.length} pedido(s)` : 'Sin resultados' }}
         </span>
+        <span v-if="hasActiveFilters" class="text-blue-700">Filtros activos</span>
       </div>
     </div>
 
@@ -97,9 +108,15 @@
               <Pencil :size="16" />
               <span class="sr-only">Editar</span>
             </NuxtLink>
-            <span v-else class="pedido-action cursor-not-allowed text-gray-300">
+            <button
+              v-else
+              class="pedido-action text-gray-300 cursor-not-allowed"
+              disabled
+              title="Solo disponible para pedidos pendientes o en ruta"
+              aria-label="Editar pedido no disponible"
+            >
               <Pencil :size="16" />
-            </span>
+            </button>
             <button
               class="pedido-action text-green-600 hover:bg-green-50 disabled:opacity-40"
               :disabled="printingId === p.id"
@@ -179,6 +196,15 @@
                   <span class="sr-only">Editar</span>
                 </NuxtLink>
                 <button
+                  v-else
+                  class="pedido-action text-gray-300 cursor-not-allowed"
+                  disabled
+                  title="Solo disponible para pedidos pendientes o en ruta"
+                  aria-label="Editar pedido no disponible"
+                >
+                  <Pencil :size="15" />
+                </button>
+                <button
                   class="pedido-action text-green-600 hover:bg-green-50 disabled:opacity-40"
                   :disabled="printingId === p.id"
                   title="Imprimir comprobante"
@@ -227,7 +253,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { formatDate } from '~/utils/formats'
+import { ordenarPedidosAscendente } from '~/utils/reglas-negocio'
 import { Eye, MapPin, Pencil, Plus, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -256,6 +284,8 @@ const estados = [
 ]
 
 const filters = reactive({ estado: '', fechaDesde: '', fechaHasta: '' })
+const hasActiveFilters = computed(() => Boolean(filters.estado || filters.fechaDesde || filters.fechaHasta))
+const route = useRoute()
 
 async function loadPedidos() {
   loading.value = true
@@ -267,7 +297,7 @@ async function loadPedidos() {
 
     const res = await api.get(`/operaciones/pedidos?${params}`)
     const d = apiResponse.unwrap(res) as any
-    pedidos.value = d.data ?? []
+    pedidos.value = ordenarPedidosAscendente(d.data ?? [], (p) => p.numero ?? '')
     pagination.total = d.total ?? 0
     pagination.totalPages = d.totalPages ?? 1
   } catch {
@@ -316,6 +346,14 @@ function irANuevoPedido() {
   navigateTo('/pedidos/create')
 }
 
+function resetFilters() {
+  filters.estado = ''
+  filters.fechaDesde = ''
+  filters.fechaHasta = ''
+  pagination.page = 1
+  loadPedidos()
+}
+
 function confirmarEliminarPedido(p: any) {
   pedidoAEliminar.value = p
   modalEliminarPedido.value?.open()
@@ -347,6 +385,10 @@ function changePage(delta: number) {
 }
 
 onMounted(async () => {
+  const estadoQuery = route.query.estado
+  if (typeof estadoQuery === 'string' && estadoQuery) {
+    filters.estado = estadoQuery
+  }
   await Promise.all([fetchEstadoJornada(), loadPedidos()])
 })
 </script>

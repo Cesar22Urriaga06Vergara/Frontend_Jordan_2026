@@ -1,5 +1,7 @@
 <template>
   <div class="space-y-6">
+    <ReprogramadosAlert />
+
     <div class="flex flex-wrap items-start gap-4">
       <button
         type="button"
@@ -38,7 +40,7 @@
         <h2 class="text-lg font-semibold text-gray-800">Pedidos en ruta ({{ ruta.itemsRuta?.length ?? 0 }})</h2>
         <ul class="text-sm divide-y divide-gray-100 border rounded-lg overflow-hidden">
           <li
-            v-for="item in ruta.itemsRuta"
+            v-for="item in itemsRutaOrdenados"
             :key="item.id"
             class="flex flex-col gap-3 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
@@ -88,12 +90,12 @@
 
       <!-- Agregar pedidos -->
       <section v-if="puedeEditarPedidos" class="card space-y-3">
-        <h2 class="text-lg font-semibold text-gray-800">Agregar pedidos pendientes</h2>
+        <h2 class="text-lg font-semibold text-gray-800">Agregar pedidos disponibles</h2>
         <div v-if="loadingPendientes" class="text-sm text-gray-400">Cargando…</div>
-        <div v-else-if="!pedidosPendientes.length" class="text-sm text-gray-400">No hay pedidos pendientes.</div>
+        <div v-else-if="!pedidosPendientes.length" class="text-sm text-gray-400">No hay pedidos disponibles para ruta.</div>
         <div v-else class="space-y-1 max-h-56 overflow-y-auto border rounded-lg p-2 bg-gray-50">
           <label
-            v-for="p in pedidosPendientes"
+            v-for="p in pedidosPendientesOrdenados"
             :key="p.id"
             class="flex items-center gap-3 p-2 rounded hover:bg-white cursor-pointer text-sm"
             :class="pedidosSeleccionados.includes(p.id) ? 'bg-white ring-1 ring-blue-300' : ''"
@@ -101,6 +103,10 @@
             <input v-model="pedidosSeleccionados" type="checkbox" :value="p.id" class="accent-blue-600" />
             <span class="font-medium text-gray-700">{{ p.numero ?? p.numeroPedido }}</span>
             <span class="text-gray-500 text-xs truncate">{{ p.cliente?.nombre ?? '' }}</span>
+            <EstadoBadge :estado="p.estado" />
+            <span v-if="p.estado === 'REPROGRAMADO'" class="text-[11px] text-purple-600">
+              {{ formatDate(p.fechaReprogramacion ?? p.fecha) }}
+            </span>
           </label>
         </div>
         <button
@@ -299,6 +305,7 @@ import {
   Truck,
   X,
 } from 'lucide-vue-next'
+import { ordenarPedidosAscendente } from '~/utils/reglas-negocio'
 definePageMeta({ middleware: 'auth' })
 
 type Accion = {
@@ -374,6 +381,18 @@ const pedidoForm = reactive({
 
 const puedeEditarPedidos = computed(() =>
   ['CREADA', 'CARGADA', 'EN_ENTREGA', 'EN_LIQUIDACION'].includes(ruta.value?.estado ?? ''),
+)
+
+const itemsRutaOrdenados = computed(() =>
+  ordenarPedidosAscendente<any>(ruta.value?.itemsRuta ?? [], (item) =>
+    String(item.pedido?.numero ?? item.pedidoId ?? ''),
+  ),
+)
+
+const pedidosPendientesOrdenados = computed(() =>
+  ordenarPedidosAscendente<any>(pedidosPendientes.value, (p) =>
+    String(p.numero ?? p.numeroPedido ?? p.id ?? ''),
+  ),
 )
 
 const totalPedidoEditando = computed(() =>
@@ -542,12 +561,26 @@ async function fetchPedidosPendientes() {
   loadingPendientes.value = true
   try {
     const res = await api.get('/operaciones/pedidos', {
-      params: { estado: 'PENDIENTE', soloDisponiblesRuta: 'true', limit: 200 },
+      params: {
+        soloDisponiblesRuta: 'true',
+        limit: 200,
+        rutaId: ruta.value.id,
+      },
     })
     const d = apiResponse.unwrap(res) as any
     const lista = d.items ?? d.data ?? []
-    const usados = new Set<number>((ruta.value.itemsRuta ?? []).map((i: any) => i.pedidoId))
-    pedidosPendientes.value = (Array.isArray(lista) ? lista : []).filter((p: any) => !usados.has(p.id))
+    const itemsRuta = ruta.value.itemsRuta ?? []
+    const itemPorPedido = new Map<number, any>(
+      itemsRuta.map((item: any) => [Number(item.pedidoId), item]),
+    )
+
+    pedidosPendientes.value = (Array.isArray(lista) ? lista : []).filter((p: any) => {
+      const item = itemPorPedido.get(Number(p.id))
+      if (!item) return true
+      if (p.estado === 'REPROGRAMADO') return true
+      if (item.estado === 'REPROGRAMADO' || item.pedido?.estado === 'REPROGRAMADO') return true
+      return false
+    })
   } catch {
     pedidosPendientes.value = []
     notify.error('No se pudieron cargar pedidos pendientes')

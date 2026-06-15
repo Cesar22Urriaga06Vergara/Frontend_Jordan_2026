@@ -17,7 +17,7 @@
     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <StatCard label="Productos en stock" :value="String(inventarioActual.length)" :icon="Boxes" color="blue" :loading="loading" />
       <StatCard label="Alertas de stock" :value="String(stockBajo.length)" :icon="AlertTriangle" color="orange" :loading="loading" />
-      <StatCard label="Producción del día" :value="String(totalProducido)" :icon="Factory" color="green" :loading="loading" />
+      <StatCard label="Produccion usable" :value="String(totalProducido)" :icon="Factory" color="green" :loading="loading" />
       <StatCard label="Tanques activos" :value="String(tanquesActivos.length)" :icon="Droplets" color="purple" :loading="loading" />
     </div>
 
@@ -116,16 +116,22 @@
           <thead>
             <tr class="border-b text-left text-xs uppercase text-gray-500">
               <th class="pb-2 font-medium">Producto</th>
-              <th class="pb-2 text-right font-medium">Producido</th>
+              <th class="pb-2 text-right font-medium">Usable</th>
+              <th class="pb-2 text-right font-medium">Filtradas</th>
+              <th class="pb-2 text-right font-medium">Reempacadas</th>
+              <th class="pb-2 text-right font-medium">Merma</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in produccion" :key="item.id" class="border-b border-gray-50">
               <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
               <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidad) }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidadFiltrada ?? 0) }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidadReempacada ?? 0) }}</td>
+              <td class="py-2 text-right text-red-600">{{ formatQuantity(item.cantidadMerma ?? 0) }}</td>
             </tr>
             <tr v-if="!produccion.length">
-              <td colspan="2" class="py-4 text-center text-gray-400">Sin producción registrada</td>
+              <td colspan="5" class="py-4 text-center text-gray-400">Sin produccion registrada</td>
             </tr>
           </tbody>
         </table>

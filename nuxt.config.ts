@@ -1,3 +1,5 @@
+const apiProxyTarget = process.env.NUXT_API_PROXY_TARGET?.trim().replace(/\/$/, '')
+
 export default defineNuxtConfig({
   ssr: false,
   
@@ -79,11 +81,13 @@ export default defineNuxtConfig({
     },
   },
 
-  routeRules: {
-    '/api/**': {
-      proxy: 'https://backend-jordan-2026.onrender.com/api/**',
-    },
-  },
+  routeRules: apiProxyTarget
+    ? {
+        '/api/**': {
+          proxy: `${apiProxyTarget}/api/**`,
+        },
+      }
+    : {},
 
   vite: {
     define: {

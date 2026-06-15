@@ -25,7 +25,7 @@
         <FormField label="Dirección">
           <input v-model="form.direccion" class="form-input" />
         </FormField>
-        <FormField label="ClasificaciÃ³n *" :error="errors.tipoTrabajador">
+        <FormField label="Clasificación *" :error="errors.tipoTrabajador">
           <select v-model="form.tipoTrabajador" class="form-input">
             <option v-for="tipo in tiposTrabajador" :key="tipo.nombre" :value="tipo.nombre">
               {{ tipo.nombre }}
@@ -40,16 +40,21 @@
             </option>
           </select>
         </FormField>
-        <FormField label="Modalidad pago *" :error="errors.valorPago">
+        <FormField label="Modalidad pago *" class="sm:col-span-2">
           <select v-model="form.modalidadPago" class="form-input">
             <option value="POR_JORNADA">Por jornada</option>
             <option value="POR_HORA">Por hora</option>
             <option value="POR_PACA">Por paca</option>
           </select>
+          <p class="mt-1 text-xs text-gray-500">{{ modalidadPagoHelp }}</p>
         </FormField>
-        <FormField :label="tarifaBaseLabel" :error="errors.valorPago">
+        <FormField
+          v-if="form.modalidadPago === 'POR_JORNADA'"
+          label="Tarifa por jornada *"
+          :error="errors.valorPago"
+          class="sm:col-span-2"
+        >
           <input v-model.number="form.valorPago" type="number" min="0" class="form-input" />
-          <p class="mt-1 text-xs text-gray-500">{{ tarifaBaseHelp }}</p>
         </FormField>
       </div>
 
@@ -91,10 +96,14 @@ const form = reactive({
   valorPago: undefined as number | undefined,
 })
 const errors = reactive({ codigo: '', nombre: '', cedula: '', tipoTrabajador: '', valorPago: '' })
-const tarifaBaseLabel = computed(() => {
-  if (form.modalidadPago === 'POR_HORA') return 'Tarifa sugerida por hora ($)'
-  if (form.modalidadPago === 'POR_PACA') return 'Tarifa sugerida por paca ($)'
-  return 'Tarifa base por jornada ($)'
+const modalidadPagoHelp = computed(() => {
+  if (form.modalidadPago === 'POR_HORA') {
+    return 'El valor por hora se define al registrar cada labor en Labores y Pagos.'
+  }
+  if (form.modalidadPago === 'POR_PACA') {
+    return 'El valor por paca se define al registrar cada labor en Labores y Pagos.'
+  }
+  return 'Tarifa fija por jornada. Se puede usar como referencia al registrar labores.'
 })
 
 function tipoPagoLabel(tipo?: string) {
@@ -123,18 +132,14 @@ async function fetchTiposTrabajador() {
     tiposTrabajador.value = TIPOS_FALLBACK
   }
 }
-const tarifaBaseHelp = computed(() => {
-  if (form.modalidadPago === 'POR_HORA') return 'Opcional. El valor real puede definirse al registrar la labor por horas.'
-  if (form.modalidadPago === 'POR_PACA') return 'Opcional. El valor real se define al registrar pacas selladas.'
-  return 'Se paga por jornada registrada en labores.'
-})
 
 function validarForm() {
   errors.codigo = form.codigo.trim() ? '' : 'El código es requerido'
   errors.nombre = form.nombre.trim() ? '' : 'El nombre es requerido'
   errors.cedula = form.cedula.trim() ? '' : 'La cédula es requerida'
-  errors.valorPago = form.modalidadPago === 'POR_JORNADA' && (!form.valorPago || form.valorPago <= 0) ? 'La tarifa base debe ser mayor a 0' :
-                      form.valorPago && form.valorPago <= 0 ? 'Debe ser mayor a 0' : ''
+  errors.valorPago = form.modalidadPago === 'POR_JORNADA' && (!form.valorPago || form.valorPago <= 0)
+    ? 'La tarifa por jornada es requerida'
+    : form.valorPago && form.valorPago <= 0 ? 'Debe ser mayor a 0' : ''
   return !errors.codigo && !errors.nombre && !errors.cedula && !errors.valorPago
 }
 
@@ -142,7 +147,7 @@ async function guardarTrabajador() {
   if (!validarForm()) return
   saving.value = true
   try {
-    await api.post('/catalogos/trabajadores', {
+    const payload: Record<string, any> = {
       codigo: form.codigo,
       nombre: form.nombre,
       cedula: form.cedula,
@@ -151,8 +156,11 @@ async function guardarTrabajador() {
       tipoTrabajador: form.tipoTrabajador,
       cargo: form.cargo || undefined,
       modalidadPago: form.modalidadPago,
-      valorPago: form.valorPago,
-    })
+    }
+    if (form.modalidadPago === 'POR_JORNADA' && form.valorPago && form.valorPago > 0) {
+      payload.valorPago = form.valorPago
+    }
+    await api.post('/catalogos/trabajadores', payload)
     notify.success('Trabajador creado')
     navigateTo('/catalogos/trabajadores')
   } catch (e: any) {

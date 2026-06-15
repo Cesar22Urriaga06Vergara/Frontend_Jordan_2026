@@ -12,11 +12,8 @@
 
     <!-- Sidebar -->
     <aside
-      class="fixed inset-y-0 left-0 z-30 flex flex-col bg-gradient-to-b from-blue-950 to-blue-900 text-white flex-shrink-0 shadow-xl transition-all duration-300
-             lg:static lg:z-auto lg:translate-x-0 lg:overflow-hidden"
-      :class="sidebarOpen
-        ? 'w-64 translate-x-0'
-        : 'w-64 -translate-x-full lg:w-0'"
+      class="fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-gradient-to-b from-blue-950 to-blue-900 text-white flex-shrink-0 shadow-xl lg:static lg:z-auto lg:overflow-hidden"
+      :class="sidebarClasses"
     >
       <!-- Logo → public/LOGO.png -->
       <div class="flex items-center gap-3 px-5 py-5 border-b border-blue-800 bg-gradient-to-r from-blue-950 to-blue-900">
@@ -32,9 +29,9 @@
         </div>
         <!-- Cerrar en móvil -->
         <button class="lg:hidden text-blue-300 hover:text-white p-1 rounded transition-colors" @click="sidebarOpen = false">
-            <ArrowLeft class="h-5 w-5" />
-          </button>
-        </div>
+          <ArrowLeft class="h-5 w-5" />
+        </button>
+      </div>
 
         <!-- Nav -->
         <nav class="flex-1 overflow-y-auto py-4">
@@ -97,7 +94,13 @@
       <!-- Top bar -->
       <header class="bg-white border-b-2 border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col gap-2 flex-shrink-0 shadow-sm">
         <div class="flex items-center gap-3">
-          <button class="text-gray-500 hover:text-blue-600 transition-colors flex-shrink-0 p-1 rounded hover:bg-gray-100" @click="sidebarOpen = !sidebarOpen">
+          <button
+            v-if="!isDesktop"
+            class="text-gray-500 hover:text-blue-600 transition-colors flex-shrink-0 p-1 rounded hover:bg-gray-100"
+            @click="toggleSidebar"
+            :title="sidebarOpen ? 'Cerrar menú' : 'Abrir menú'"
+            :aria-label="sidebarOpen ? 'Cerrar menú' : 'Abrir menú'"
+          >
             <Menu class="h-5 w-5" />
           </button>
           <h1 class="text-lg sm:text-2xl font-bold text-gray-900 truncate">{{ pageTitle }}</h1>
@@ -165,10 +168,12 @@
 </template>
 
 <script setup lang="ts">
-import { AlertTriangle, ArrowLeft, BarChart3, Boxes, BriefcaseBusiness, CalendarDays, ChevronRight, ClipboardList, CreditCard, Factory, Home, Layers3, LogOut, Menu, Package, Receipt, Settings, Truck, UserCog, UserRound, WalletCards } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, BarChart3, Boxes, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, CreditCard, Factory, Home, Layers3, LogOut, Menu, Package, Receipt, Settings, Truck, UserCog, UserRound, WalletCards } from 'lucide-vue-next'
+import { provide, computed } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import Breadcrumb from '~/components/layout/Breadcrumb.vue'
 import { formatDate, todayISO } from '~/utils/formats'
+import { useLocalState } from '~/composables/useLocalState'
 
 defineOptions({ name: 'DefaultLayout' })
 
@@ -177,14 +182,26 @@ const route = useRoute()
 const api = useApi()
 const apiResponse = useApiResponse()
 
-// En desktop empieza abierto, en móvil cerrado
 const sidebarOpen = ref(false)
+const windowWidth = ref(window.innerWidth)
+const isDesktop = computed(() => windowWidth.value >= 1024)
 const diaAbiertoPendiente = ref<any>(null)
 const stockBajoGlobal = ref<any[]>([])
 let stockBajoTimer: ReturnType<typeof setInterval> | undefined
 
+const sidebarClasses = computed(() => [
+  'w-64 transition-all duration-300 ease-in-out',
+  sidebarOpen.value ? 'translate-x-0' : '-translate-x-full lg:-translate-x-0',
+].join(' '))
+
+function handleResize() {
+  windowWidth.value = window.innerWidth
+  sidebarOpen.value = window.innerWidth >= 1024
+}
+
 onMounted(() => {
   sidebarOpen.value = window.innerWidth >= 1024
+  window.addEventListener('resize', handleResize)
   fetchDiaAbiertoPendiente()
   fetchStockBajoGlobal()
   stockBajoTimer = setInterval(fetchStockBajoGlobal, 30000)
@@ -196,11 +213,16 @@ watch(() => route.fullPath, () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
   if (stockBajoTimer) clearInterval(stockBajoTimer)
 })
 
 function closeSidebarOnMobile() {
   if (window.innerWidth < 1024) sidebarOpen.value = false
+}
+
+function toggleSidebar() {
+  sidebarOpen.value = !sidebarOpen.value
 }
 
 const userInitial = computed(() =>

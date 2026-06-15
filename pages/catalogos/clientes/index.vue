@@ -39,9 +39,19 @@
             <option value="false">Inactivos</option>
           </select>
         </div>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="btn-secondary text-sm px-3 py-2"
+            @click="clearFilters"
+          >
+            Limpiar filtros
+          </button>
+        </div>
       </div>
       <div class="text-xs text-gray-500 flex items-center gap-2">
-        <span v-if="searchQuery || filtroTipo || filtroActivo" class="inline-block">
+        <span v-if="hasActiveFilters" class="inline-block">
           Filtros activos: {{ [searchQuery ? 'búsqueda' : '', filtroTipo ? 'tipo' : '', filtroActivo ? 'estado' : ''].filter(Boolean).join(', ') }}
         </span>
       </div>
@@ -206,6 +216,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, watch, onMounted } from 'vue'
 import { formatCurrency } from '~/utils/formats'
 import { CheckCircle, Edit, Eye, MapPin, Plus, Search, Trash2, XCircle } from 'lucide-vue-next'
 import { usePagination } from '~/composables/usePagination'
@@ -331,6 +342,7 @@ async function guardarPrecio() {
 
 const filtroActivo = ref('')
 const filtroTipo = ref('')
+const hasActiveFilters = computed(() => Boolean(searchQuery.value || filtroTipo.value || filtroActivo.value))
 
 async function fetchClientes() {
   loading.value = true
@@ -359,6 +371,14 @@ async function fetchClientes() {
 
 function cambiarPagina(delta: number) {
   pagina.value = Math.max(1, Math.min(totalPaginas.value, pagina.value + delta))
+  fetchClientes()
+}
+
+function clearFilters() {
+  searchQuery.value = ''
+  filtroTipo.value = ''
+  filtroActivo.value = ''
+  pagina.value = 1
   fetchClientes()
 }
 

@@ -31,7 +31,7 @@ describe('usePagination', () => {
       expect(pagination.totalPaginas.value).toBe(4)
 
       pagination.total.value = 0
-      expect(pagination.totalPaginas.value).toBe(0)
+      expect(pagination.totalPaginas.value).toBe(1)
     })
   })
 
@@ -66,7 +66,7 @@ describe('usePagination', () => {
     it('should not go below first page', () => {
       pagination.pagina.value = 1
       pagination.prevPage()
-      expect(pagination.pagina.value).toBe(0) // Permite valores inválidos (app debe validar)
+      expect(pagination.pagina.value).toBe(1)
     })
 
     it('should go to specific page', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useCache } from '~/composables/useCache'
 
 describe('useCache', () => {
@@ -51,6 +51,14 @@ describe('useCache', () => {
   })
 
   describe('TTL and expiration', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
     it('should respect custom TTL per entry', () => {
       cache.set('short', 'data', 100) // 100ms
       cache.set('long', 'data', 5000) // 5 segundos

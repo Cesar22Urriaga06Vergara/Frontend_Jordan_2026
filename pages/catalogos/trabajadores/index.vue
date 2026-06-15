@@ -38,7 +38,8 @@
             <th class="px-4 py-3 font-medium">Tipo</th>
             <th class="px-4 py-3 font-medium">Cargo</th>
             <th class="px-4 py-3 font-medium">Teléfono</th>
-            <th class="px-4 py-3 font-medium">Tarifa base ($)</th>
+            <th class="px-4 py-3 font-medium">Modalidad pago</th>
+            <th class="px-4 py-3 font-medium">Tarifa jornada ($)</th>
             <th class="px-4 py-3 font-medium">Saldo operativo ($)</th>
             <th class="px-4 py-3 font-medium">Estado</th>
             <th class="px-4 py-3 font-medium">Acciones</th>
@@ -46,10 +47,10 @@
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="10" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
+            <td colspan="11" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
           </tr>
           <tr v-else-if="!trabajadores.length">
-            <td colspan="10" class="px-4 py-8 text-center text-gray-400">Sin resultados.</td>
+            <td colspan="11" class="px-4 py-8 text-center text-gray-400">Sin resultados.</td>
           </tr>
           <tr
             v-for="t in trabajadores"
@@ -64,8 +65,13 @@
             </td>
             <td class="px-4 py-3 text-gray-600">{{ t.cargo ?? '—' }}</td>
             <td class="px-4 py-3 text-gray-500">{{ t.telefono ?? '—' }}</td>
+            <td class="px-4 py-3">
+              <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                {{ modalidadPagoLabel(t.modalidadPago) }}
+              </span>
+            </td>
             <td class="px-4 py-3 text-right text-gray-700 font-medium">
-              {{ formatCurrency(t.tarifaBase ?? 0) }}
+              {{ t.modalidadPago === 'POR_JORNADA' ? formatCurrency(t.tarifaBase ?? 0) : '—' }}
             </td>
             <td class="px-4 py-3 text-right" :class="(t.saldoTotal ?? 0) > 0 ? 'text-green-700 font-semibold' : 'text-gray-400'">
               {{ formatCurrency(t.saldoTotal ?? 0) }}
@@ -152,14 +158,22 @@
               </option>
             </select>
           </FormField>
-          <FormField label="Modalidad pago *">
+          <FormField label="Modalidad pago *" class="col-span-2">
             <select v-model="form.modalidadPago" class="form-input">
               <option value="POR_JORNADA">Por jornada</option>
               <option value="POR_HORA">Por hora</option>
               <option value="POR_PACA">Por paca</option>
             </select>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ modalidadPagoHelp }}
+            </p>
           </FormField>
-          <FormField :label="tarifaBaseLabel" :error="errors.valorPago">
+          <FormField
+            v-if="form.modalidadPago === 'POR_JORNADA'"
+            label="Tarifa por jornada *"
+            :error="errors.valorPago"
+            class="col-span-2"
+          >
             <input
               v-model.number="form.valorPago"
               class="form-input"
@@ -168,9 +182,6 @@
               step="1"
               placeholder="Ej: 42000"
             />
-            <p class="mt-1 text-xs text-gray-500">
-              {{ tarifaBaseHelp }}
-            </p>
           </FormField>
         </div>
 
@@ -219,20 +230,22 @@ const form = reactive({
   modalidadPago: 'POR_JORNADA', valorPago: undefined as number | undefined,
 })
 const errors = reactive({ codigo: '', nombre: '', cedula: '', valorPago: '' })
-const tarifaBaseLabel = computed(() => {
-  if (form.modalidadPago === 'POR_HORA') return 'Tarifa sugerida por hora'
-  if (form.modalidadPago === 'POR_PACA') return 'Tarifa sugerida por paca'
-  return 'Tarifa base por jornada *'
-})
-const tarifaBaseHelp = computed(() => {
+const modalidadPagoHelp = computed(() => {
   if (form.modalidadPago === 'POR_HORA') {
-    return 'Opcional. El administrador puede definir el valor real al registrar la labor por horas.'
+    return 'El valor por hora se define al registrar cada labor en Labores y Pagos.'
   }
   if (form.modalidadPago === 'POR_PACA') {
-    return 'Opcional. El administrador define pacas y valor por paca al registrar la labor.'
+    return 'El valor por paca se define al registrar cada labor en Labores y Pagos.'
   }
-  return 'Se paga por jornada registrada en labores. El saldo se actualiza al registrar la labor.'
+  return 'Tarifa fija por jornada. Se puede usar como referencia al registrar labores.'
 })
+
+function modalidadPagoLabel(modalidad?: string) {
+  if (modalidad === 'POR_HORA') return 'Por hora'
+  if (modalidad === 'POR_PACA') return 'Por paca'
+  if (modalidad === 'POR_JORNADA') return 'Por jornada'
+  return 'Sin definir'
+}
 
 function tipoPagoLabel(tipo?: string) {
   if (tipo === 'POR_HORA') return 'por hora'
@@ -245,8 +258,9 @@ function validarForm(): boolean {
   errors.codigo = !form.codigo.trim() ? 'El código es requerido' : ''
   errors.nombre = !form.nombre.trim() ? 'El nombre es requerido' : ''
   errors.cedula = !form.cedula.trim() ? 'La cédula es requerida' : ''
-  errors.valorPago = form.modalidadPago === 'POR_JORNADA' && !editando.value && (!form.valorPago || form.valorPago <= 0) ? 'El valor es requerido' : 
-                     form.valorPago && form.valorPago <= 0 ? 'Debe ser mayor a 0' : ''
+  errors.valorPago = form.modalidadPago === 'POR_JORNADA' && (!form.valorPago || form.valorPago <= 0)
+    ? 'La tarifa por jornada es requerida'
+    : form.valorPago && form.valorPago <= 0 ? 'Debe ser mayor a 0' : ''
   return !errors.codigo && !errors.nombre && !errors.cedula && !errors.valorPago
 }
 
@@ -360,7 +374,7 @@ async function guardar() {
       cargo: form.cargo || undefined,
       modalidadPago: form.modalidadPago,
     }
-    if (form.valorPago && form.valorPago > 0) {
+    if (form.modalidadPago === 'POR_JORNADA' && form.valorPago && form.valorPago > 0) {
       payload.valorPago = Number(form.valorPago)
     }
 
@@ -402,6 +416,10 @@ async function eliminarTrabajador(t: any) {
     notify.error(e?.response?.data?.message ?? 'Error al eliminar trabajador')
   }
 }
+
+watch(() => form.modalidadPago, () => {
+  if (form.modalidadPago !== 'POR_JORNADA') form.valorPago = undefined
+})
 
 onMounted(() => {
   fetchTrabajadores()

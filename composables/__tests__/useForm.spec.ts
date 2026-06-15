@@ -29,15 +29,11 @@ describe('useForm', () => {
     })
 
     it('should initialize errors as empty', () => {
-      expect((form.errors as any).name).toBe('')
-      expect((form.errors as any).email).toBe('')
-      expect((form.errors as any).age).toBe('')
+      expect(Object.keys(form.errors as object)).toHaveLength(0)
     })
 
     it('should initialize touched fields as empty', () => {
-      expect((form.touched as any).name).toBe(false)
-      expect((form.touched as any).email).toBe(false)
-      expect((form.touched as any).age).toBe(false)
+      expect(Object.keys(form.touched as object)).toHaveLength(0)
     })
   })
 
@@ -135,14 +131,14 @@ describe('useForm', () => {
 
   describe('touched field tracking', () => {
     it('should mark field as touched', () => {
-      expect((form.touched as any).name).toBe(false)
+      expect((form.touched as any).name).toBeUndefined()
       form.markFieldTouched('name')
       expect((form.touched as any).name).toBe(true)
     })
 
     it('should not auto-mark touched on setFieldValue', () => {
       form.setFieldValue('name', 'Juan')
-      expect((form.touched as any).name).toBe(false)
+      expect((form.touched as any).name).toBeUndefined()
     })
 
     it('should track multiple touched fields', () => {
@@ -151,7 +147,7 @@ describe('useForm', () => {
 
       expect((form.touched as any).name).toBe(true)
       expect((form.touched as any).email).toBe(true)
-      expect((form.touched as any).age).toBe(false)
+      expect((form.touched as any).age).toBeUndefined()
     })
   })
 

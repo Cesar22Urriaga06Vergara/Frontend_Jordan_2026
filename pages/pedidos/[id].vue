@@ -1,16 +1,20 @@
 <template>
   <div class="mx-auto max-w-5xl space-y-6">
-    <button type="button" class="btn-secondary inline-flex items-center gap-2" @click="navigateTo('/pedidos')">
-      <ArrowLeft class="h-4 w-4" />
-      Volver a pedidos
-    </button>
+    <template v-if="isEditing">
+      <NuxtPage />
+    </template>
 
-    <div v-if="loading" class="card flex h-40 items-center justify-center text-gray-400">
-      Cargando...
-    </div>
+      <button type="button" class="btn-secondary inline-flex items-center gap-2" @click="navigateTo('/pedidos')">
+        <ArrowLeft class="h-4 w-4" />
+        Volver a pedidos
+      </button>
 
-    <template v-else-if="pedido">
-      <div class="card flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div v-if="loading" class="card flex h-40 items-center justify-center text-gray-400">
+        Cargando...
+      </div>
+
+      <template v-else-if="pedido">
+        <div class="card flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-3">
             <h1 class="truncate text-xl font-bold text-gray-800">{{ pedido.numeroPedido ?? pedido.numero ?? `Pedido #${pedido.id}` }}</h1>
@@ -82,6 +86,23 @@
           <p class="mt-1 text-sm text-blue-700">Asignalo desde Rutas cuando este listo para cargar.</p>
           <NuxtLink to="/rutas" class="btn-primary mt-4 flex justify-center">Ir a rutas</NuxtLink>
         </aside>
+
+        <aside v-else-if="pedido.estado === 'REPROGRAMADO'" class="card h-fit border-purple-100 bg-purple-50/60">
+          <p class="font-semibold text-purple-900">Reprogramado</p>
+          <p class="mt-1 text-sm text-purple-700">
+            Nueva fecha: {{ formatDate(pedido.fechaReprogramacion ?? pedido.fecha) }}
+          </p>
+          <p v-if="pedido.razonReprogramacion" class="mt-2 text-sm text-purple-700">
+            {{ pedido.razonReprogramacion }}
+          </p>
+          <NuxtLink to="/rutas" class="btn-primary mt-4 flex justify-center">Asignar a ruta</NuxtLink>
+        </aside>
+
+        <aside v-else-if="pedido.estado === 'NO_ENTREGADO'" class="card h-fit border-orange-100 bg-orange-50/60">
+          <p class="font-semibold text-orange-900">No entregado</p>
+          <p class="mt-1 text-sm text-orange-700">Puede cargarse nuevamente a una ruta.</p>
+          <NuxtLink to="/rutas" class="btn-primary mt-4 flex justify-center">Asignar a ruta</NuxtLink>
+        </aside>
       </div>
 
       <div class="card overflow-x-auto p-0">
@@ -119,70 +140,80 @@
           </button>
         </div>
       </div>
+
+      <div v-else class="card py-12 text-center text-gray-400">Pedido no encontrado.</div>
+
+      <div
+        v-if="modalEstado"
+        class="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+        @click.self="modalEstado = false"
+      >
+        <div class="max-h-[100dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-none bg-white p-4 shadow-xl sm:max-h-[90vh] sm:rounded-lg sm:p-6">
+          <h3 class="font-bold text-gray-800">Cambiar a: {{ estadoDestino }}</h3>
+
+          <FormField label="Notas (opcional)">
+            <textarea v-model="estadoNotas" rows="3" class="form-input resize-none" />
+          </FormField>
+
+          <div v-if="['NO_ENTREGADO', 'REPROGRAMADO', 'CANCELADO'].includes(estadoDestino)">
+            <FormField :label="estadoDestino === 'CANCELADO' ? 'Motivo de cancelacion' : 'Motivo de no entrega'">
+              <input v-model="motivoNoEntrega" class="form-input" />
+            </FormField>
+          </div>
+
+          <div v-if="estadoDestino === 'REPROGRAMADO'">
+            <FormField label="Fecha reprogramada *">
+              <input v-model="fechaReprogramacion" type="date" class="form-input" :min="todayISO()" />
+            </FormField>
+          </div>
+
+          <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <button class="btn-secondary" @click="modalEstado = false">Cancelar</button>
+            <button class="btn-primary" :disabled="saving" @click="confirmarCambioEstado">
+              {{ saving ? 'Guardando...' : 'Confirmar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ModalConfirmacion
+        ref="modalCancelConfirm"
+        titulo="Cancelar este pedido"
+        descripcion="Una vez cancelado, el pedido no podra ser entregado."
+        textoConfirm="Si, cancelar"
+        textoCancel="Volver"
+        :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
+        advertencia="Se requiere motivo de cancelacion."
+        @confirm="procederCancelar"
+        @cancel="modalCancelConfirm?.close()"
+      />
+
+      <ModalConfirmacion
+        ref="modalEliminarPedido"
+        titulo="Eliminar pedido"
+        descripcion="El pedido se eliminara definitivamente si aun no tiene venta ni historial operativo."
+        textoConfirm="Eliminar"
+        textoCancel="Cancelar"
+        :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
+        advertencia="Para pedidos ya entregados o facturados usa cancelar/anular segun corresponda."
+        @confirm="eliminarPedido"
+        @cancel="modalEliminarPedido?.close()"
+      />
     </template>
 
     <div v-else class="card py-12 text-center text-gray-400">Pedido no encontrado.</div>
-
-    <div
-      v-if="modalEstado"
-      class="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 p-0 sm:items-center sm:p-4"
-      @click.self="modalEstado = false"
-    >
-      <div class="max-h-[100dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-none bg-white p-4 shadow-xl sm:max-h-[90vh] sm:rounded-lg sm:p-6">
-        <h3 class="font-bold text-gray-800">Cambiar a: {{ estadoDestino }}</h3>
-
-        <FormField label="Notas (opcional)">
-          <textarea v-model="estadoNotas" rows="3" class="form-input resize-none" />
-        </FormField>
-
-        <div v-if="['NO_ENTREGADO', 'REPROGRAMADO', 'CANCELADO'].includes(estadoDestino)">
-          <FormField :label="estadoDestino === 'CANCELADO' ? 'Motivo de cancelacion' : 'Motivo de no entrega'">
-            <input v-model="motivoNoEntrega" class="form-input" />
-          </FormField>
-        </div>
-
-        <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-          <button class="btn-secondary" @click="modalEstado = false">Cancelar</button>
-          <button class="btn-primary" :disabled="saving" @click="confirmarCambioEstado">
-            {{ saving ? 'Guardando...' : 'Confirmar' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <ModalConfirmacion
-      ref="modalCancelConfirm"
-      titulo="Cancelar este pedido"
-      descripcion="Una vez cancelado, el pedido no podra ser entregado."
-      textoConfirm="Si, cancelar"
-      textoCancel="Volver"
-      :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
-      advertencia="Se requiere motivo de cancelacion."
-      @confirm="procederCancelar"
-      @cancel="modalCancelConfirm?.close()"
-    />
-
-    <ModalConfirmacion
-      ref="modalEliminarPedido"
-      titulo="Eliminar pedido"
-      descripcion="El pedido se eliminara definitivamente si aun no tiene venta ni historial operativo."
-      textoConfirm="Eliminar"
-      textoCancel="Cancelar"
-      :detalles="{ Pedido: pedido?.numero, Cliente: pedido?.cliente?.nombre }"
-      advertencia="Para pedidos ya entregados o facturados usa cancelar/anular segun corresponda."
-      @confirm="eliminarPedido"
-      @cancel="modalEliminarPedido?.close()"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { formatCurrency, formatDate } from '~/utils/formats'
+import { computed, onMounted, ref } from 'vue'
+import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
 import { ArrowLeft, MapPin, Pencil, Phone, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
+const isEditing = computed(() => route.path.endsWith('/edit'))
 const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
@@ -195,12 +226,14 @@ const modalEstado = ref(false)
 const estadoDestino = ref('')
 const estadoNotas = ref('')
 const motivoNoEntrega = ref('')
+const fechaReprogramacion = ref(todayISO())
 const modalCancelConfirm = ref()
 const modalEliminarPedido = ref()
 const deleting = ref(false)
 
 const TRANSICIONES: Record<string, { valor: string; label: string; color?: string }[]> = {
   PENDIENTE: [
+    { valor: 'REPROGRAMADO', label: 'Reprogramar' },
     { valor: 'CANCELADO', label: 'Cancelar pedido', color: 'bg-red-600 hover:bg-red-700' },
   ],
   CARGADO_EN_RUTA: [
@@ -211,10 +244,12 @@ const TRANSICIONES: Record<string, { valor: string; label: string; color?: strin
   ],
   NO_ENTREGADO: [
     { valor: 'PENDIENTE', label: 'Re-poner pendiente' },
+    { valor: 'REPROGRAMADO', label: 'Reprogramar' },
     { valor: 'CANCELADO', label: 'Cancelar' },
   ],
   REPROGRAMADO: [
     { valor: 'PENDIENTE', label: 'Re-poner pendiente' },
+    { valor: 'REPROGRAMADO', label: 'Cambiar fecha' },
     { valor: 'CANCELADO', label: 'Cancelar' },
   ],
 }
@@ -260,6 +295,7 @@ function abrirModalEstado(estado: string) {
   estadoDestino.value = estado
   estadoNotas.value = ''
   motivoNoEntrega.value = ''
+  fechaReprogramacion.value = todayISO()
   if (estado === 'CANCELADO') modalCancelConfirm.value?.open()
   else modalEstado.value = true
 }
@@ -278,6 +314,10 @@ async function confirmarCambioEstado() {
     notify.error('Debes indicar el motivo de reprogramacion')
     return
   }
+  if (estadoDestino.value === 'REPROGRAMADO' && !fechaReprogramacion.value) {
+    notify.error('Debes indicar la fecha de reprogramacion')
+    return
+  }
 
   saving.value = true
   try {
@@ -285,6 +325,7 @@ async function confirmarCambioEstado() {
     if (estadoNotas.value) payload.observaciones = estadoNotas.value
     if (motivoNoEntrega.value && estadoDestino.value === 'REPROGRAMADO') {
       payload.razonReprogramacion = motivoNoEntrega.value
+      payload.fechaReprogramacion = fechaReprogramacion.value
     }
     if (motivoNoEntrega.value && estadoDestino.value === 'NO_ENTREGADO') {
       payload.observaciones = [estadoNotas.value, `Motivo no entrega: ${motivoNoEntrega.value}`]

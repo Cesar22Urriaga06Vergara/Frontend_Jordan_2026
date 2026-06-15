@@ -87,57 +87,99 @@
           <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p class="text-xs font-bold uppercase text-gray-400">Paso 1</p>
-              <h2 class="mt-1 font-semibold text-gray-800">Apertura de jornada</h2>
+              <h2 class="mt-1 font-semibold text-gray-800">
+                {{ remanenteOrigen ? 'Reapertura de jornada' : 'Apertura de jornada' }}
+              </h2>
             </div>
-            <button class="btn-secondary inline-flex items-center gap-1 text-xs" @click="agregarInventario">
+            <button v-if="!remanenteOrigen" class="btn-secondary inline-flex items-center gap-1 text-xs" @click="agregarInventario">
               <Plus class="h-4 w-4" />
               Añadir producto
             </button>
           </div>
 
-          <div class="mb-3 flex items-center justify-between">
+          <div
+            v-if="remanenteOrigen"
+            class="mb-4 rounded-lg border px-4 py-3 text-sm"
+            :class="modoReapertura 
+              ? 'border-purple-200 bg-purple-50 text-purple-800'
+              : 'border-blue-100 bg-blue-50 text-blue-800'"
+          >
+            <p class="font-semibold" :class="modoReapertura ? 'text-purple-900' : ''">
+              {{ modoReapertura 
+                ? '✓ Reapertura del mismo día' 
+                : `Remanente cargado del cierre del día ${remanenteOrigen}`
+              }}
+            </p>
+            <p v-if="!modoReapertura" class="mt-1">
+              Inventario inicial y saldo de caja ({{ formatCurrency(aperturaSaldoInicial) }}) se tomaron de ese cierre.
+            </p>
+            <p v-else class="mt-1 text-xs opacity-90">
+              Todos los datos operativos se preservan. Los consecutivos continúan desde donde se quedaron.
+            </p>
+          </div>
+
+          <div v-if="!remanenteOrigen || !modoReapertura" class="mb-3 flex items-center justify-between">
             <span class="text-sm font-medium text-gray-600">Inventario inicial</span>
             <span class="text-xs text-gray-400">{{ aperturaInventario.length }} líneas</span>
           </div>
 
-          <div v-if="!aperturaInventario.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
-            <PackagePlus class="mx-auto mb-2 h-8 w-8 text-gray-300" />
-            <p class="font-medium text-gray-700">Sin productos iniciales</p>
-            <p class="mt-1 text-sm text-gray-500">Agrega solo los productos con inventario al iniciar el día.</p>
-          </div>
+          <div v-if="!modoReapertura">
+            <div v-if="!aperturaInventario.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
+              <PackagePlus class="mx-auto mb-2 h-8 w-8 text-gray-300" />
+              <p class="font-medium text-gray-700">Sin productos iniciales</p>
+              <p class="mt-1 text-sm text-gray-500">Si hay un día anterior cerrado, se precarga el remanente de inventario.</p>
+            </div>
 
-          <div v-else class="space-y-2">
-            <div
-              v-for="(item, i) in aperturaInventario"
-              :key="i"
-              class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_36px]"
-            >
-              <select v-model="item.productoId" class="form-input">
-                <option :value="undefined">Seleccionar...</option>
-                <option v-for="p in productos" :key="p.id" :value="p.id">{{ p.nombre }}</option>
-              </select>
-              <input v-model.number="item.cantidadInicial" class="form-input" type="number" min="0" placeholder="Cant." />
-              <button class="rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600" @click="aperturaInventario.splice(i, 1)">
-                ×
-              </button>
+            <div v-else class="space-y-2">
+              <div
+                v-for="(item, i) in aperturaInventario"
+                :key="i"
+                class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_36px]"
+              >
+                <select v-model="item.productoId" class="form-input">
+                  <option :value="undefined">Seleccionar...</option>
+                  <option v-for="p in productos" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </select>
+                <input v-model.number="item.cantidadInicial" class="form-input" type="number" min="0" placeholder="Cant." />
+                <button class="rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600" @click="aperturaInventario.splice(i, 1)">
+                  ×
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <aside class="card bg-blue-50/60">
-          <p class="text-xs font-bold uppercase text-blue-500">Confirmación</p>
-          <h3 class="mt-1 font-semibold text-gray-800">Abrir planta</h3>
-          <p class="mt-2 text-sm text-gray-500">Al abrir la jornada se habilitan pedidos, rutas, ventas y cierre.</p>
+        <aside class="card" :class="modoReapertura ? 'bg-purple-50/60' : 'bg-blue-50/60'">
+          <p class="text-xs font-bold uppercase" :class="modoReapertura ? 'text-purple-600' : 'text-blue-500'">
+            {{ modoReapertura ? 'Reapertura' : 'Confirmación' }}
+          </p>
+          <h3 class="mt-1 font-semibold text-gray-800">
+            {{ modoReapertura ? 'Reabrir jornada' : 'Abrir planta' }}
+          </h3>
+          <p class="mt-2 text-sm text-gray-500">
+            {{ modoReapertura 
+              ? 'Los datos del cierre anterior se restauran. Continuarás con la misma numeración de consecutivos.'
+              : 'Al abrir la jornada se habilitan pedidos, rutas, ventas y cierre. Se arrastra inventario y caja del último día cerrado.'
+            }}
+          </p>
 
-          <div class="mt-5 space-y-3">
+          <div v-if="!modoReapertura" class="mt-5 space-y-3">
             <FormField label="Saldo inicial ($)">
               <input v-model.number="aperturaSaldoInicial" class="form-input" type="number" min="0" />
+              <p v-if="remanenteOrigen && aperturaSaldoInicial > 0" class="mt-1 text-xs text-blue-600">
+                Sugerido desde cierre del {{ remanenteOrigen }}
+              </p>
             </FormField>
-            <button class="btn-primary inline-flex w-full items-center justify-center gap-2" :disabled="savingApertura" @click="abrirDia">
-              <CalendarDays class="h-4 w-4" />
-              {{ savingApertura ? 'Abriendo...' : 'Abrir jornada' }}
-            </button>
           </div>
+
+          <button
+            class="btn-primary inline-flex w-full items-center justify-center gap-2 mt-5"
+            :disabled="savingApertura || (modoReapertura ? false : !remanenteOrigen && !aperturaInventario.some(i => i.productoId))"
+            @click="abrirDia"
+          >
+            <CalendarDays class="h-4 w-4" />
+            {{ savingApertura ? (modoReapertura ? 'Reabriendo...' : 'Abriendo...') : (modoReapertura ? 'Reabrir jornada' : 'Abrir jornada') }}
+          </button>
         </aside>
       </section>
 
@@ -163,19 +205,103 @@
               </span>
             </div>
 
-            <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-5">
               <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
                 <p class="text-xs font-bold uppercase text-gray-400">Inventario inicial</p>
                 <p class="mt-1 text-xl font-black text-gray-900">{{ inventarioInicialTotal }}</p>
               </div>
               <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                <p class="text-xs font-bold uppercase text-gray-400">Producción</p>
-                <p class="mt-1 text-xl font-black text-gray-900">{{ produccionTotal }}</p>
+                <p class="text-xs font-bold uppercase text-gray-400">Produccion usable</p>
+                <p class="mt-1 text-xl font-black text-gray-900">{{ produccionUsableTotal }}</p>
+                <p class="mt-1 text-[11px] text-gray-500">Inicial {{ inventarioInicialTotal }} + día {{ produccionDiaTotal }}</p>
               </div>
               <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                <p class="text-xs font-bold uppercase text-gray-400">Cierre</p>
-                <p class="mt-1 text-xl font-black text-gray-900">{{ estado.cierre ? 'Listo' : 'Pendiente' }}</p>
+                <p class="text-xs font-bold uppercase text-gray-400">Filtradas</p>
+                <p class="mt-1 text-xl font-black text-gray-900">{{ produccionFiltradaTotal }}</p>
               </div>
+              <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p class="text-xs font-bold uppercase text-gray-400">Reempacadas</p>
+                <p class="mt-1 text-xl font-black text-gray-900">{{ produccionReempacadaTotal }}</p>
+              </div>
+              <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p class="text-xs font-bold uppercase text-gray-400">Merma</p>
+                <p class="mt-1 text-xl font-black text-gray-900">{{ produccionMermaTotal }}</p>
+              </div>
+            </div>
+
+            <div v-if="produccionRegistrada.length" class="mt-4 overflow-hidden rounded-lg border border-gray-100">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                  <tr>
+                    <th class="px-3 py-2 font-medium">Producto</th>
+                    <th class="px-3 py-2 text-right font-medium">Usable</th>
+                    <th class="px-3 py-2 text-right font-medium">Filtradas</th>
+                    <th class="px-3 py-2 text-right font-medium">Reempacadas</th>
+                    <th class="px-3 py-2 text-right font-medium">Merma</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in produccionRegistrada" :key="item.id" class="border-t border-gray-100">
+                    <td class="px-3 py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? productoNombre(item.productoId) }}</td>
+                    <td class="px-3 py-2 text-right">{{ Number(item.cantidad ?? 0) }}</td>
+                    <td class="px-3 py-2 text-right">{{ Number(item.cantidadFiltrada ?? 0) }}</td>
+                    <td class="px-3 py-2 text-right">{{ Number(item.cantidadReempacada ?? 0) }}</td>
+                    <td class="px-3 py-2 text-right text-red-600">{{ Number(item.cantidadMerma ?? 0) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p class="text-xs font-bold uppercase text-gray-400">Paso 1.5</p>
+                <h2 class="mt-1 font-semibold text-gray-800">Registrar pacas filtradas (salida de inventario)</h2>
+                <p class="mt-1 text-sm text-gray-500">Registra pacas que se descartaron o limpiaron. Estas pacas se descuentan del inventario; no se consideran producción.</p>
+              </div>
+              <button
+                v-if="!estado.cierre"
+                class="btn-secondary inline-flex items-center gap-1 text-xs"
+                @click="agregarFiltrada"
+              >
+                <Plus class="h-4 w-4" />
+                Añadir
+              </button>
+            </div>
+
+            <div v-if="!filtradaItems.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-7 text-center">
+              <PackagePlus class="mx-auto mb-2 h-8 w-8 text-gray-300" />
+              <p class="font-medium text-gray-700">Sin pacas filtradas pendientes</p>
+              <p class="mt-1 text-sm text-gray-500">Usa Añadir para registrar pacas filtradas que deben salir del inventario.</p>
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="(item, i) in filtradaItems"
+                :key="i"
+                class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_36px]"
+              >
+                <select v-model="item.productoId" class="form-input">
+                  <option :value="undefined">Seleccionar...</option>
+                  <option v-for="p in productos" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </select>
+                <input v-model.number="item.cantidadFiltrada" class="form-input" type="number" min="1" placeholder="Filtradas" />
+                <button class="rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600" @click="filtradaItems.splice(i, 1)">
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center gap-3">
+              <button
+                class="btn-primary inline-flex items-center gap-2"
+                :disabled="savingFiltrada || !filtradaItemsValidos.length"
+                @click="registrarFiltradasUI"
+              >
+                <Droplets class="h-4 w-4" />
+                {{ savingFiltrada ? 'Guardando...' : 'Registrar filtradas' }}
+              </button>
+              <button class="text-xs text-gray-400" @click="cargarFilttradasPendientes(fechaSeleccionada)">Cargar filtradas pendientes</button>
             </div>
           </div>
 
@@ -235,6 +361,72 @@
                 </button>
                 <span v-if="produccionRegistrada.length" class="text-xs text-gray-400">
                   {{ produccionRegistrada.length }} registros guardados
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p class="text-xs font-bold uppercase text-gray-400">Reempaque</p>
+                <h2 class="mt-1 font-semibold text-gray-800">Pacas filtradas</h2>
+                <p class="mt-1 text-sm text-gray-500">Registra cuantas pacas se revisaron y cuantas volvieron al inventario usable.</p>
+              </div>
+              <button
+                v-if="!estado.cierre"
+                class="btn-secondary inline-flex items-center gap-1 text-xs"
+                @click="agregarReempaque"
+              >
+                <Plus class="h-4 w-4" />
+                Añadir
+              </button>
+            </div>
+
+            <div v-if="estado.cierre" class="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">
+              El dia ya esta cerrado. Reempaque bloqueado.
+            </div>
+            <div v-else>
+              <div v-if="!reempaqueItems.length" class="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-7 text-center">
+                <RefreshCw class="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                <p class="font-medium text-gray-700">Sin reempaque pendiente</p>
+                <p class="mt-1 text-sm text-gray-500">No es necesario registrar producción para reempaque. Carga las "Filtradas pendientes" o añade manualmente.</p>
+              </div>
+
+              <div v-else class="space-y-3">
+                <div
+                  v-for="(item, i) in reempaqueItems"
+                  :key="i"
+                  class="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_110px_130px_1fr_36px]"
+                >
+                  <div>
+                    <select v-model="item.productoId" class="form-input">
+                      <option :value="undefined">Seleccionar...</option>
+                      <option v-for="p in productosConProduccion" :key="p.productoId" :value="p.productoId">
+                        {{ p.nombre }} - disp. {{ p.cantidad }}
+                      </option>
+                    </select>
+                  </div>
+                  <input v-model.number="item.cantidadFiltrada" class="form-input" type="number" min="1" placeholder="Filtradas" />
+                  <input v-model.number="item.cantidadReempacada" class="form-input" type="number" min="0" placeholder="Reempacadas" />
+                  <input v-model="item.observaciones" class="form-input" type="text" placeholder="Observaciones" />
+                  <button class="rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600" @click="reempaqueItems.splice(i, 1)">
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  class="btn-primary inline-flex items-center gap-2"
+                  :disabled="savingReempaque || !reempaqueItemsValidos.length"
+                  @click="registrarReempaque"
+                >
+                  <RefreshCw class="h-4 w-4" />
+                  {{ savingReempaque ? 'Guardando...' : 'Guardar reempaque' }}
+                </button>
+                <span v-if="reempaqueItemsValidos.length" class="text-xs text-gray-400">
+                  Merma calculada: {{ reempaqueMermaPendiente }}
                 </span>
               </div>
             </div>
@@ -313,7 +505,46 @@
           </button>
         </aside>
 
-        <aside v-else class="card">
+        <aside v-if="!estado.cierre && modoReapertura" class="card bg-purple-50 border border-purple-200">
+          <div class="rounded-lg border border-purple-100 bg-white p-4 mb-4">
+            <div class="flex items-start gap-3">
+              <CheckCircle2 class="h-5 w-5 text-purple-700 mt-0.5" />
+              <div>
+                <p class="text-sm font-semibold text-purple-700">Reapertura del mismo día</p>
+                <p class="mt-1 text-xs text-purple-600">
+                  Todos los registros operativos se han preservado: pedidos, rutas, producción, ventas, caja e inventario están intactos.
+                </p>
+                <p class="mt-2 text-xs text-purple-600">
+                  Los consecutivos continúan desde donde se quedaron.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="text-xs font-bold uppercase text-purple-600 mb-2">Estado de continuidad</div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="rounded p-2 bg-purple-100">
+              <p class="text-purple-700 font-semibold">{{ produccionRegistrada.length }}</p>
+              <p class="text-purple-600">Registros producción</p>
+            </div>
+            <div class="rounded p-2 bg-purple-100">
+              <p class="text-purple-700 font-semibold">{{ estado.pedidosPendientes }}</p>
+              <p class="text-purple-600">Pedidos pendientes</p>
+            </div>
+            <div class="rounded p-2 bg-purple-100">
+              <p class="text-purple-700 font-semibold">{{ estado.rutasAbiertas }}</p>
+              <p class="text-purple-600">Rutas abiertas</p>
+            </div>
+            <div class="rounded p-2 bg-purple-100">
+              <p class="text-purple-700 font-semibold">{{ estado.ventasHoy ?? 0 }}</p>
+              <p class="text-purple-600">Ventas del día</p>
+            </div>
+          </div>
+          <p class="mt-4 text-xs text-purple-600">
+            Continúa con tu operación. Recuerda: solo se puede abrir una nueva jornada cuando cambie la fecha.
+          </p>
+        </aside>
+
+        <aside v-else-if="estado.cierre" class="card">
           <div class="rounded-lg border border-gray-100 bg-gray-50 p-4">
             <p class="text-xs font-bold uppercase text-gray-400">Jornada cerrada</p>
             <p v-if="estado.cierre?.createdAt" class="mt-2 text-sm text-gray-600">
@@ -321,9 +552,14 @@
             </p>
             <p class="mt-1 text-sm text-gray-500">Puedes consultar el historial operativo abajo.</p>
           </div>
-          <button v-if="!reopening" class="btn-primary mt-4 w-full" @click="reopening = true">
-            Abrir nuevo día
-          </button>
+          <div class="mt-4 space-y-2">
+            <button v-if="!reopening" class="btn-primary w-full" @click="reopening = true">
+              Abrir nuevo día
+            </button>
+            <button v-if="!modoReapertura" class="btn-secondary w-full text-xs" @click="fetchEstado">
+              Actualizar estado
+            </button>
+          </div>
         </aside>
       </section>
 
@@ -380,6 +616,7 @@ import {
 } from 'lucide-vue-next'
 import { formatCurrency, formatDate, formatDateTime, todayISO } from '~/utils/formats'
 import { defaultTanquesAgua, mapTanquesCatalogo } from '~/utils/tanquesAgua'
+import { useFiltradas } from '~/composables/useFiltradas'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -389,21 +626,43 @@ const apiResponse = useApiResponse()
 const route = useRoute()
 const router = useRouter()
 
+// Filtradas (ajustes de inventario)
+const {
+  filtradaItems,
+  filtradasPendientes,
+  savingFiltrada,
+  loadingPendientes,
+  filtradaItemsValidos,
+  registrarFiltrada,
+  cargarFilttradasPendientes,
+  agregarFiltrada,
+  limpiarFiltradas,
+} = useFiltradas()
+
 const hoy = todayISO()
 const fechaSeleccionada = ref(typeof route.query.fecha === 'string' ? route.query.fecha : hoy)
 const loadingEstado = ref(true)
 const savingApertura = ref(false)
 const savingProduccion = ref(false)
+const savingReempaque = ref(false)
 const savingCierre = ref(false)
 const diaPendiente = ref<string | null>(null)
+const remanenteOrigen = ref<string | null>(null)
 
 const estado = ref<any>({ apertura: null, cierre: null, pedidosPendientes: 0, rutasAbiertas: 0 })
 const reopening = ref(false)
+const modoReapertura = ref(false) // Flag para indicar que está en modo reapertura
 const historial = ref<any[]>([])
 const productos = ref<any[]>([])
 const aperturaInventario = ref<{ productoId: number | undefined; cantidadInicial: number }[]>([])
 const aperturaSaldoInicial = ref(0)
 const produccionItems = ref<{ productoId: number | undefined; cantidad: number }[]>([])
+const reempaqueItems = ref<Array<{
+  productoId: number | undefined
+  cantidadFiltrada: number
+  cantidadReempacada: number
+  observaciones: string
+}>>([])
 const cierreInventario = ref<{ productoId: number; nombre: string; cantidadEsperada: number; cantidadContada: number }[]>([])
 const tanquesAgua = ref(defaultTanquesAgua())
 const cierreForm = reactive({ saldoContado: 0, observaciones: '' })
@@ -418,6 +677,18 @@ const jornadaState = computed(() => {
       wrapperClass: 'border-blue-200 bg-blue-50',
       iconClass: 'bg-blue-100 text-blue-700',
       badgeClass: 'bg-blue-100 text-blue-700',
+    }
+  }
+
+  if (modoReapertura.value) {
+    return {
+      icon: CheckCircle2,
+      badge: 'Reabierta',
+      title: 'Jornada reabierta - mismo día',
+      description: 'Se recuperó el estado operativo del cierre. Todos los registros permanecen intactos.',
+      wrapperClass: 'border-purple-200 bg-purple-50',
+      iconClass: 'bg-purple-100 text-purple-700',
+      badgeClass: 'bg-purple-100 text-purple-700',
     }
   }
 
@@ -476,8 +747,69 @@ const inventarioInicialTotal = computed(() => {
   const inventarios = estado.value?.apertura?.inventariosInicial ?? []
   return inventarios.reduce((sum: number, item: any) => sum + Number(item.cantidadInicial ?? 0), 0)
 })
-const produccionTotal = computed(() =>
+const produccionDiaTotal = computed(() =>
   produccionRegistrada.value.reduce((sum: number, item: any) => sum + Number(item.cantidad ?? item.cantidadProducida ?? 0), 0),
+)
+const produccionUsableTotal = computed(() =>
+  inventarioInicialTotal.value + produccionDiaTotal.value,
+)
+const produccionTotal = produccionUsableTotal
+const produccionFiltradaTotal = computed(() =>
+  produccionRegistrada.value.reduce((sum: number, item: any) => sum + Number(item.cantidadFiltrada ?? 0), 0),
+)
+const produccionReempacadaTotal = computed(() =>
+  produccionRegistrada.value.reduce((sum: number, item: any) => sum + Number(item.cantidadReempacada ?? 0), 0),
+)
+const produccionMermaTotal = computed(() =>
+  produccionRegistrada.value.reduce((sum: number, item: any) => sum + Number(item.cantidadMerma ?? 0), 0),
+)
+const productosConProduccion = computed(() => {
+  const map = new Map<number, { productoId: number; nombre: string; cantidad: number }>()
+
+  for (const item of estado.value?.apertura?.inventariosInicial ?? []) {
+    const cantidad = Number(item.cantidadInicial ?? 0)
+    if (cantidad <= 0) continue
+    map.set(item.productoId, {
+      productoId: item.productoId,
+      nombre: item.producto?.nombre ?? productoNombre(item.productoId),
+      cantidad,
+    })
+  }
+
+  for (const item of produccionRegistrada.value) {
+    const cantidadDia = Number(item.cantidad ?? 0)
+    const existente = map.get(item.productoId)
+    if (existente) {
+      existente.cantidad += cantidadDia
+      continue
+    }
+    if (cantidadDia <= 0) continue
+    map.set(item.productoId, {
+      productoId: item.productoId,
+      nombre: item.producto?.nombre ?? productoNombre(item.productoId),
+      cantidad: cantidadDia,
+    })
+  }
+
+  return [...map.values()].filter((item) => item.cantidad > 0)
+})
+const reempaqueItemsValidos = computed(() =>
+  reempaqueItems.value.filter(
+    item =>
+      item.productoId &&
+      Number(item.cantidadFiltrada ?? 0) > 0 &&
+      Number(item.cantidadReempacada ?? 0) >= 0,
+  ),
+)
+const reempaqueMermaPendiente = computed(() =>
+  reempaqueItemsValidos.value.reduce(
+    (sum, item) =>
+      sum + Math.max(0, Number(item.cantidadFiltrada ?? 0) - Number(item.cantidadReempacada ?? 0)),
+    0,
+  ),
+)
+const esReaperturaMismoDia = computed(() =>
+  reopening.value && estado.value.apertura && estado.value.cierre,
 )
 const cierreBloqueos = computed(() => {
   const bloqueos: string[] = []
@@ -492,20 +824,51 @@ const cierreBloqueado = computed(() => cierreBloqueos.value.length > 0)
 function syncCierreInventario() {
   const inventarios = estado.value?.apertura?.inventariosInicial ?? []
   const produccion = estado.value?.apertura?.producciondiaria ?? []
-  cierreInventario.value = inventarios.map((item: any) => {
-    const prod = produccion.find((p: any) => p.productoId === item.productoId)
-    const cantidadEsperada = Number(item.cantidadInicial ?? 0) + Number(prod?.cantidad ?? 0)
-    return {
+  const map = new Map<number, { productoId: number; nombre: string; cantidadEsperada: number }>()
+
+  for (const item of inventarios) {
+    map.set(item.productoId, {
       productoId: item.productoId,
       nombre: item.producto?.nombre ?? `Producto ${item.productoId}`,
-      cantidadEsperada,
-      cantidadContada: cantidadEsperada,
+      cantidadEsperada: Number(item.cantidadInicial ?? 0),
+    })
+  }
+
+  for (const item of produccion) {
+    const existente = map.get(item.productoId)
+    const cantidadDia = Number(item.cantidad ?? 0)
+    if (existente) {
+      existente.cantidadEsperada += cantidadDia
+      continue
     }
-  })
+    map.set(item.productoId, {
+      productoId: item.productoId,
+      nombre: item.producto?.nombre ?? `Producto ${item.productoId}`,
+      cantidadEsperada: cantidadDia,
+    })
+  }
+
+  cierreInventario.value = [...map.values()].map((item) => ({
+    ...item,
+    cantidadContada: item.cantidadEsperada,
+  }))
+}
+
+function productoNombre(productoId: number | undefined) {
+  return productos.value.find((producto) => producto.id === productoId)?.nombre ?? `Producto ${productoId ?? ''}`.trim()
+}
+
+function produccionDisponible(productoId: number | undefined) {
+  const inv = estado.value?.apertura?.inventariosInicial?.find(
+    (item: any) => item.productoId === productoId,
+  )
+  const prod = produccionRegistrada.value.find((item: any) => item.productoId === productoId)
+  return Number(inv?.cantidadInicial ?? 0) + Number(prod?.cantidad ?? 0)
 }
 
 function onFechaChange() {
   reopening.value = false
+  modoReapertura.value = false
   router.replace({ path: '/operaciones/diario', query: { fecha: fechaSeleccionada.value } })
   fetchEstado()
 }
@@ -527,6 +890,16 @@ async function fetchEstado() {
 
     if (estadoRes.status === 'fulfilled') {
       estado.value = apiResponse.unwrap(estadoRes.value)
+      const tieneOperaciones = 
+        (estado.value.apertura?.producciondiaria?.length ?? 0) > 0 ||
+        estado.value.pedidosPendientes > 0 ||
+        estado.value.rutasAbiertas > 0
+
+      modoReapertura.value = (
+        !!estado.value.apertura &&
+        (!!estado.value.cierre || tieneOperaciones) &&
+        fechaSeleccionada.value === todayISO()
+      )
     } else {
       throw estadoRes.reason
     }
@@ -541,6 +914,7 @@ async function fetchEstado() {
     }
 
     syncCierreInventario()
+    await cargarInventarioRemanente()
   } catch (e: any) {
     const msg: string = e?.response?.data?.message ?? e?.message ?? ''
     const match = msg.match(/(\d{4}-\d{2}-\d{2})/)
@@ -561,6 +935,52 @@ async function fetchHistorial() {
   } catch {
     historial.value = []
     notify.error('Error al cargar el historial del día')
+  }
+}
+
+async function cargarInventarioRemanente() {
+  // Si está en modo reapertura o ya tiene apertura sin cierre, no cargar remanente
+  if (modoReapertura.value || esReaperturaMismoDia.value || (estado.value.apertura && !estado.value.cierre && !reopening.value)) {
+    remanenteOrigen.value = null
+    return
+  }
+
+  // Si no está en fase de apertura, no cargar remanente
+  if (estado.value.apertura && !(estado.value.cierre && reopening.value)) {
+    remanenteOrigen.value = null
+    return
+  }
+
+  try {
+    const res = await api.get('/diario/inventario-remanente', {
+      params: { fecha: fechaSeleccionada.value },
+    })
+    const data = apiResponse.unwrap(res) as any
+    remanenteOrigen.value = data.fechaOrigen ?? null
+
+    if (data.fechaOrigen) {
+      if (Number(data.saldoInicial ?? 0) > 0) {
+        aperturaSaldoInicial.value = Number(data.saldoInicial)
+      }
+
+      if (Array.isArray(data.items) && data.items.length) {
+        const manual = new Map(
+          aperturaInventario.value
+            .filter((item) => item.productoId)
+            .map((item) => [Number(item.productoId), item]),
+        )
+
+        aperturaInventario.value = data.items.map((item: any) => {
+          const existente = manual.get(Number(item.productoId))
+          return {
+            productoId: Number(item.productoId),
+            cantidadInicial: existente?.cantidadInicial ?? Number(item.cantidadInicial ?? 0),
+          }
+        })
+      }
+    }
+  } catch {
+    remanenteOrigen.value = null
   }
 }
 
@@ -592,22 +1012,60 @@ function agregarProduccion() {
   produccionItems.value.push({ productoId: undefined, cantidad: 1 })
 }
 
+function agregarReempaque() {
+  const primerProducto = productosConProduccion.value[0]?.productoId
+  reempaqueItems.value.push({
+    productoId: primerProducto,
+    cantidadFiltrada: 1,
+    cantidadReempacada: 1,
+    observaciones: '',
+  })
+}
+
 async function abrirDia() {
   savingApertura.value = true
   try {
-    await api.post('/diario/apertura', {
-      fecha: fechaSeleccionada.value,
-      saldoInicial: aperturaSaldoInicial.value,
-      inventario: aperturaInventario.value.filter(i => i.productoId).map(i => ({
-        productoId: i.productoId,
-        cantidadInicial: i.cantidadInicial,
-      })),
-      observaciones: `Apertura manual ${fechaSeleccionada.value}`,
-    })
-    notify.success('Día abierto')
+    // Si ya existe apertura sin cierre, usar endpoint de reapertura
+    const existeAperturaSinCierre = estado.value.apertura && !estado.value.cierre
+    
+    const endpoint = existeAperturaSinCierre ? '/diario/reapertura' : '/diario/apertura'
+    const payload = existeAperturaSinCierre 
+      ? undefined  // Reapertura no necesita payload adicional
+      : {
+          fecha: fechaSeleccionada.value,
+          saldoInicial: aperturaSaldoInicial.value,
+          inventario: aperturaInventario.value.filter(i => i.productoId).map(i => ({
+            productoId: i.productoId,
+            cantidadInicial: i.cantidadInicial,
+          })),
+          observaciones: `Apertura manual ${fechaSeleccionada.value}`,
+        }
+
+    const config = existeAperturaSinCierre 
+      ? { params: { fecha: fechaSeleccionada.value } }
+      : {}
+
+    const response = await (
+      payload
+        ? api.post(endpoint, payload, config)
+        : api.post(endpoint, {}, config)
+    )
+
+    const result = apiResponse.unwrap(response)
+    
+    if (existeAperturaSinCierre) {
+      notify.success('Jornada reabierta - todos los datos operativos se preservan')
+      modoReapertura.value = true
+    } else {
+      notify.success(remanenteOrigen.value
+        ? `Día abierto con remanente del ${remanenteOrigen.value} (inventario y caja)`
+        : 'Día abierto')
+    }
+    
     reopening.value = false
     aperturaInventario.value = []
     aperturaSaldoInicial.value = 0
+    remanenteOrigen.value = null
     await fetchEstado()
   } catch (e: any) {
     const msg: string = e?.response?.data?.message ?? e?.message ?? ''
@@ -631,7 +1089,7 @@ async function registrarProduccion() {
         productoId: i.productoId,
         cantidad: i.cantidad,
       })),
-    })
+    }, { params: { fecha: fechaSeleccionada.value } })
     notify.success('Producción registrada')
     produccionItems.value = []
     await fetchEstado()
@@ -639,6 +1097,60 @@ async function registrarProduccion() {
     notify.error(e?.response?.data?.message ?? 'Error al registrar producción')
   } finally {
     savingProduccion.value = false
+  }
+}
+
+async function registrarFiltradasUI() {
+  if (!filtradaItemsValidos.value.length) {
+    notify.warning('Agrega al menos una paca filtrada')
+    return
+  }
+
+  const itemMayorDisponible = filtradaItemsValidos.value.find(
+    item => Number(item.cantidadFiltrada ?? 0) > produccionDisponible(item.productoId),
+  )
+  if (itemMayorDisponible) {
+    notify.error(`La cantidad filtrada supera el stock disponible de ${productoNombre(itemMayorDisponible.productoId)}`)
+    return
+  }
+
+  try {
+    await registrarFiltrada(fechaSeleccionada.value)
+    notify.success('Filtradas registradas')
+    await fetchEstado()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'Error al registrar filtradas')
+  }
+}
+
+async function registrarReempaque() {
+  const itemMayorReempacado = reempaqueItemsValidos.value.find(
+    item => Number(item.cantidadReempacada ?? 0) > Number(item.cantidadFiltrada ?? 0),
+  )
+  if (itemMayorReempacado) {
+    notify.error('La cantidad reempacada no puede ser mayor a la filtrada')
+    return
+  }
+
+  // Nota: la validación de disponibilidad se delega al backend o al flujo de 'filtradas pendientes'.
+
+  savingReempaque.value = true
+  try {
+    await api.post('/diario/produccion/reempaque', {
+      items: reempaqueItemsValidos.value.map(item => ({
+        productoId: item.productoId,
+        cantidadFiltrada: Number(item.cantidadFiltrada ?? 0),
+        cantidadReempacada: Number(item.cantidadReempacada ?? 0),
+        observaciones: item.observaciones || undefined,
+      })),
+    }, { params: { fecha: fechaSeleccionada.value } })
+    notify.success('Reempaque registrado')
+    reempaqueItems.value = []
+    await fetchEstado()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'Error al registrar reempaque')
+  } finally {
+    savingReempaque.value = false
   }
 }
 

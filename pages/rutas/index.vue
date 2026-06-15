@@ -14,6 +14,8 @@
       </button>
     </div>
 
+    <ReprogramadosAlert />
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="card flex items-center gap-4">
         <div class="h-11 w-11 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
@@ -258,7 +260,6 @@ function abrirModal() {
 }
 
 function gestionarRuta(r: any) {
-  if (!requireJornadaAbierta()) return
   navigateTo(`/rutas/${r.id}`)
 }
 

@@ -136,11 +136,10 @@ describe('useSearch', () => {
     })
 
     it('should compute removed count', () => {
-      const total = search.filteredItems.value.length
-      search.setSearchQuery('juan')
-      const removed = search.getRemovedCount()
+      search.setSearchFields('nombre')
+      search.setSearchQuery('pedro')
 
-      expect(removed).toBe(total - 1)
+      expect(search.getRemovedCount()).toBe(3)
     })
   })
 

@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="to"
-    class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-2 transition-all duration-150"
+    class="group flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-2 transition-all duration-150"
     :aria-current="isActive ? 'page' : undefined"
     :class="isActive 
       ? 'bg-blue-600 text-white shadow-md' 
@@ -15,13 +15,14 @@
       />
       <span v-else class="text-base leading-none">{{ icon }}</span>
     </span>
-    <span class="flex-1">{{ label }}</span>
+    <span class="flex-1 transition-all duration-150">{{ label }}</span>
     <ChevronRight v-if="isActive" class="h-4 w-4" aria-hidden="true" />
   </NuxtLink>
 </template>
 
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -31,7 +32,17 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const isActive = computed(() =>
-  props.to === '/' ? route.path === '/' : route.path.startsWith(props.to),
-)
+const normalizedRoutePath = computed(() => route.path.replace(/\/$/, ''))
+const normalizedToPath = computed(() => props.to.replace(/\/$/, ''))
+
+const isActive = computed(() => {
+  const routePath = normalizedRoutePath.value
+  const toPath = normalizedToPath.value
+
+  if (toPath === '/') {
+    return routePath === '/'
+  }
+
+  return routePath === toPath || routePath.startsWith(`${toPath}/`)
+})
 </script>

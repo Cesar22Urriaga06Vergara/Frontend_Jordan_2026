@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { apiUnwrap } from '~/composables/useApiResponse'
+import { fetchWithAuth } from '~/composables/useFetchAuth'
 
 interface User {
   id: number
@@ -11,12 +12,14 @@ interface User {
 interface AuthState {
   user: User | null
   hydrated: boolean
+  token?: string | null
 }
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: null,
     hydrated: false,
+    token: null,
   }),
 
   getters: {
@@ -30,6 +33,10 @@ export const useAuthStore = defineStore('auth', {
       this.user = user
     },
 
+    setToken(token: string | null) {
+      this.token = token
+    },
+
     async hydrateUserFromApi() {
       if (!import.meta.client) {
         this.hydrated = true
@@ -37,14 +44,13 @@ export const useAuthStore = defineStore('auth', {
       }
 
       try {
-        const config = useRuntimeConfig()
-        const response: any = await $fetch('/auth/me', {
-          baseURL: config.public.apiBase,
-          credentials: 'include',
+        const response: any = await fetchWithAuth('/auth/me', {
+          method: 'GET',
         })
 
         const payload = apiUnwrap(response) as any
         const usuario = payload?.usuario
+        const token = payload?.token ?? null
 
         if (!usuario?.id) {
           this.user = null
@@ -57,6 +63,9 @@ export const useAuthStore = defineStore('auth', {
           nombre: usuario.nombre ?? '',
           email: usuario.email,
           rol: usuario.rol,
+        }
+        if (token) {
+          this.token = token
         }
         this.hydrated = true
         return true
@@ -85,17 +94,15 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       if (import.meta.client) {
         try {
-          const config = useRuntimeConfig()
-          await $fetch('/auth/logout', {
-            baseURL: config.public.apiBase,
+          await fetchWithAuth('/auth/logout', {
             method: 'POST',
-            credentials: 'include',
           })
         } catch {
           // Limpiar estado aunque falle la red
         }
       }
       this.user = null
+      this.token = null
       this.hydrated = true
     },
   },
