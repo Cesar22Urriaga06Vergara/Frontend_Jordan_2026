@@ -122,7 +122,7 @@
                 <button
                   type="button"
                   class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                  :disabled="!jornadaAbierta"
+                  :disabled="!puedeGestionarRuta(r)"
                   @click="gestionarRuta(r)"
                 >
                   <ArrowRight :size="14" /> Gestionar
@@ -210,7 +210,7 @@ definePageMeta({ middleware: 'auth' })
 const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
-const { jornadaAbierta, fetchEstadoJornada, requireJornadaAbierta } = useJornadaOperativa()
+const { jornadaAbierta, estadoJornada, fetchEstadoJornada, requireJornadaAbierta } = useJornadaOperativa()
 
 const ESTADOS = ['CREADA', 'CARGADA', 'EN_ENTREGA', 'EN_LIQUIDACION', 'LIQUIDADA', 'ANULADA']
 
@@ -239,6 +239,16 @@ const rutasEnEntrega = computed(() =>
 const rutasEnLiquidacion = computed(() =>
   rutas.value.filter((r) => r.estado === 'EN_LIQUIDACION').length,
 )
+
+function puedeGestionarRuta(ruta: any) {
+  if (ruta.estado === 'LIQUIDADA') return false
+  if (ruta.estado === 'EN_LIQUIDACION') return true
+
+  const rutaFecha = ruta.fecha ? String(ruta.fecha).split('T')[0] : ''
+  const jornadaFecha = estadoJornada.value?.fecha ? String(estadoJornada.value.fecha).split('T')[0] : ''
+
+  return Boolean(jornadaAbierta.value && rutaFecha === jornadaFecha)
+}
 
 function validarForm(): boolean {
   errors.fecha = !form.fecha ? 'La fecha es requerida' : ''
