@@ -52,10 +52,32 @@
         <option value="">Todos los estados</option>
         <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
       </select>
-      <button class="btn-secondary inline-flex items-center gap-2" @click="fetchRutas">
-        <RefreshCw class="h-4 w-4" />
-        Actualizar
-      </button>
+
+      <div class="min-w-36">
+        <label class="mb-1 block text-xs font-medium text-gray-700">Desde</label>
+        <input v-model="filters.fechaDesde" type="date" class="form-input" @change="pagina = 1; fetchRutas()" />
+      </div>
+
+      <div class="min-w-36">
+        <label class="mb-1 block text-xs font-medium text-gray-700">Hasta</label>
+        <input v-model="filters.fechaHasta" type="date" class="form-input" @change="pagina = 1; fetchRutas()" />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          v-if="filters.fechaDesde || filters.fechaHasta || filtroEstado"
+          type="button"
+          class="btn-secondary text-sm px-3 py-2"
+          @click="() => { filters.fechaDesde=''; filters.fechaHasta=''; filtroEstado=''; pagina=1; fetchRutas() }"
+        >
+          Limpiar filtros
+        </button>
+
+        <button class="btn-secondary inline-flex items-center gap-2" @click="fetchRutas">
+          <RefreshCw class="h-4 w-4" />
+          Actualizar
+        </button>
+      </div>
     </div>
 
     <!-- Tabla -->
@@ -202,6 +224,8 @@ const LIMITE = 15
 const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / LIMITE)))
 const filtroEstado = ref('')
 
+const filters = reactive({ fechaDesde: '', fechaHasta: '' })
+
 const modalForm = ref(false)
 const modalEliminarRuta = ref()
 const rutaAEliminar = ref<any>(null)
@@ -227,11 +251,23 @@ async function fetchRutas() {
   try {
     const params: Record<string, any> = { page: pagina.value, limit: LIMITE }
     if (filtroEstado.value) params.estado = filtroEstado.value
+    if (filters.fechaDesde) params.fechaDesde = filters.fechaDesde
+    if (filters.fechaHasta) params.fechaHasta = filters.fechaHasta
+    console.debug('[RUTAS] fetchRutas params:', params)
+
     const res = await api.get('/operaciones/rutas', { params })
     const d = apiResponse.unwrap(res) as any
+    console.debug('[RUTAS] API response:', d)
+
     rutas.value = d.items ?? d
     total.value = d.total ?? rutas.value.length
-  } catch {
+    console.debug('[RUTAS] parsed rutas:', rutas.value.length, 'total:', total.value)
+
+    if (total.value > 0 && rutas.value.length === 0) {
+      console.warn('[RUTAS] total indicates routes exist but no items were received. Check response shape and pagination.')
+    }
+  } catch (error: any) {
+    console.error('[RUTAS] error fetching rutas:', error)
     notify.error('Error al cargar rutas')
   } finally {
     loading.value = false
