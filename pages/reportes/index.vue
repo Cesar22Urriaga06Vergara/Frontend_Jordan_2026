@@ -105,6 +105,61 @@
       </table>
     </div>
 
+    <!-- Ventas detalladas por trabajador y precio -->
+    <div class="card">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="font-semibold text-gray-700">Ventas detalladas por trabajador y precio</h2>
+          <p class="text-xs text-gray-500">Desglose de productos vendidos por trabajador, separados por el precio unitario registrado en cada pedido.</p>
+        </div>
+      </div>
+      <div v-if="loading" class="text-gray-400 text-sm text-center py-4">Cargando...</div>
+      <div v-else-if="!ventasDetalladasPorTrabajadorPrecio().length" class="text-gray-400 text-sm text-center py-4">
+        Sin ventas con detalle de productos en el periodo
+      </div>
+      <div v-else class="space-y-6">
+        <div
+          v-for="t in ventasDetalladasPorTrabajadorPrecio()"
+          :key="t.trabajador"
+          class="border border-gray-100 rounded-lg overflow-hidden"
+        >
+          <div class="bg-blue-50 px-4 py-2 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800">Trabajador: {{ t.trabajador }}</h3>
+          </div>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500 border-b text-xs uppercase bg-white">
+                <th class="px-4 py-2 font-medium">Producto</th>
+                <th class="px-4 py-2 font-medium text-right">Precio unitario</th>
+                <th class="px-4 py-2 font-medium text-right">Cantidad</th>
+                <th class="px-4 py-2 font-medium text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(linea, idx) in t.lineas"
+                :key="`${linea.producto}-${linea.precioUnitario}-${idx}`"
+                class="border-b border-gray-50"
+              >
+                <td class="px-4 py-2 text-gray-800">{{ linea.producto }}</td>
+                <td class="px-4 py-2 text-right text-gray-600">{{ formatCurrency(linea.precioUnitario) }}</td>
+                <td class="px-4 py-2 text-right text-gray-600">{{ cantidadLabel(linea.cantidad) }}</td>
+                <td class="px-4 py-2 text-right font-medium">{{ formatCurrency(linea.subtotal) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="bg-gray-50">
+                <td colspan="3" class="px-4 py-2 text-right font-semibold text-gray-700">
+                  Total vendido {{ t.trabajador }}:
+                </td>
+                <td class="px-4 py-2 text-right font-bold text-blue-700">{{ formatCurrency(t.total) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Caja y egresos -->
     <div class="card">
       <div class="flex items-center justify-between gap-3 mb-4">
@@ -761,6 +816,81 @@ function pedidosTrabajadorProductoRows() {
   ])
 }
 
+function ventasDetalladasPorTrabajadorPrecio() {
+  const map: Record<string, {
+    trabajador: string
+    total: number
+    lineas: Map<string, { producto: string; precioUnitario: number; cantidad: number; subtotal: number }>
+  }> = {}
+
+  for (const pedido of pedidosRaw.value) {
+    const trabajador = trabajadorPedido(pedido)
+    if (!map[trabajador.id]) {
+      map[trabajador.id] = {
+        trabajador: trabajador.nombre,
+        total: 0,
+        lineas: new Map(),
+      }
+    }
+
+    const item = map[trabajador.id]
+    for (const detalle of pedido.detalles ?? []) {
+      const producto = detalle.producto?.nombre ?? `Producto ${detalle.productoId ?? ''}`
+      const precioUnitario = Number(detalle.precioUnitario ?? 0)
+      const cantidad = Number(detalle.cantidad ?? 0)
+      const subtotal = Number(detalle.subtotal ?? cantidad * precioUnitario)
+      const key = `${producto}\0${precioUnitario}`
+
+      if (!item.lineas.has(key)) {
+        item.lineas.set(key, { producto, precioUnitario, cantidad: 0, subtotal: 0 })
+      }
+
+      const linea = item.lineas.get(key)!
+      linea.cantidad += cantidad
+      linea.subtotal += subtotal
+      item.total += subtotal
+    }
+  }
+
+  return Object.values(map)
+    .map(item => ({
+      trabajador: item.trabajador,
+      total: item.total,
+      lineas: [...item.lineas.values()].sort((a, b) => {
+        const byProducto = a.producto.localeCompare(b.producto, 'es')
+        if (byProducto !== 0) return byProducto
+        return a.precioUnitario - b.precioUnitario
+      }),
+    }))
+    .filter(item => item.lineas.length > 0)
+    .sort((a, b) => b.total - a.total)
+}
+
+function ventasDetalladasTrabajadorPrecioExportRows() {
+  const rows: any[][] = []
+
+  for (const item of ventasDetalladasPorTrabajadorPrecio()) {
+    for (const linea of item.lineas) {
+      rows.push([
+        item.trabajador,
+        linea.producto,
+        Number(linea.precioUnitario),
+        Number(linea.cantidad),
+        Number(linea.subtotal),
+      ])
+    }
+    rows.push([
+      `Total vendido ${item.trabajador}`,
+      '',
+      '',
+      '',
+      Number(item.total),
+    ])
+  }
+
+  return rows
+}
+
 function uniqueById(items: any[]) {
   const map = new Map<string, any>()
   for (const item of items) {
@@ -1168,6 +1298,7 @@ function exportExcelEmpresarial() {
         ${htmlTable('Trazabilidad de facturas y cobros', ['Fecha movimiento', 'Movimiento', 'Cliente', 'Factura', 'Fecha factura', 'Estado factura', 'Total factura', 'Valor cobrado', 'Saldo actual', 'Interpretacion'], facturasMovimientos(), reportColors.green, [6, 7, 8], 'Relaciona cada factura y cada pago/cancelacion con su cliente, saldo e interpretacion contable.')}
         ${htmlTable('Caja y egresos', ['Fecha', 'Tipo', 'Concepto', 'Nota', 'Trabajador', 'Monto', 'Medio'], egresosRows(), reportColors.orange, [5], 'Lista salidas de caja del periodo, incluyendo egresos generales, pagos a trabajadores, anticipos y prestamos.')}
         ${htmlTable('Pedidos y pacas por trabajador', ['Trabajador', 'Pedidos', 'Entregados', 'Pacas', 'Productos vendidos', 'Total pedidos'], pedidosTrabajadorProductoRows(), reportColors.blue, [5], 'Agrupa pedidos del periodo por trabajador y detalla cuantas pacas/productos vendio cada uno.')}
+        ${htmlTable('Ventas detalladas por trabajador y precio', ['Trabajador', 'Producto', 'Precio unitario', 'Cantidad', 'Subtotal'], ventasDetalladasTrabajadorPrecioExportRows(), reportColors.blue, [2, 4], 'Desglose de productos vendidos por trabajador, separados por el precio unitario registrado en cada pedido. Las filas de total resumen cada trabajador.')}
         ${htmlTable('Trabajadores - labores', ['Fecha', 'Trabajador', 'Labor', 'Cantidad', 'Valor', 'Observaciones'], laboresRows(), reportColors.green, [4], 'Detalle de labores registradas y valor generado por trabajador.')}
         ${htmlTable('Trabajadores - pagos, anticipos y abonos', ['Fecha', 'Trabajador', 'Movimiento', 'Monto'], movimientosTrabajadoresRows(), reportColors.navy, [3], 'Consolida pagos entregados, anticipos/prestamos y abonos de deuda del periodo.')}
         ${htmlTable('Anticipos, prestamos y saldos', ['Fecha', 'Trabajador', 'Numero', 'Tipo', 'Monto original', 'Abonado', 'Saldo', 'Estado', 'Motivo'], deudasTrabajadoresRows(), reportColors.orange, [4, 5, 6], 'Detalle contable de cada deuda: valor original, abonos aplicados y saldo pendiente.')}
@@ -1622,6 +1753,42 @@ async function exportPdf() {
       margin: { top: 34, left: 14, right: 14, bottom: 14 },
       didDrawPage: () => drawPdfHeader(doc),
     })
+
+    const ventasDetalladasTrabajadores = ventasDetalladasPorTrabajadorPrecio()
+    if (ventasDetalladasTrabajadores.length) {
+      addPdfSection(
+        doc,
+        'Ventas detalladas por trabajador y precio',
+        'Desglose de productos vendidos por trabajador, separados por el precio unitario registrado en cada pedido.',
+      )
+
+      ventasDetalladasTrabajadores.forEach((item) => {
+        autoTable(doc, {
+          startY: addPdfSection(doc, `Trabajador: ${item.trabajador}`),
+          ...pdfTableDefaults(),
+          head: [['Producto', 'Precio unitario', 'Cantidad', 'Subtotal']],
+          body: item.lineas.map(linea => [
+            linea.producto,
+            formatCurrency(linea.precioUnitario),
+            cantidadLabel(linea.cantidad),
+            formatCurrency(linea.subtotal),
+          ]),
+          foot: [[`Total vendido ${item.trabajador}`, '', '', formatCurrency(item.total)]],
+          styles: { fontSize: 7.2, cellPadding: 2 },
+          columnStyles: {
+            0: { cellWidth: 118 },
+            1: { cellWidth: 34, halign: 'right' },
+            2: { cellWidth: 24, halign: 'right' },
+            3: { cellWidth: 34, halign: 'right' },
+          },
+          headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+          footStyles: { fillColor: [241, 245, 249], textColor: [30, 41, 59], fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          margin: { top: 34, left: 14, right: 14, bottom: 14 },
+          didDrawPage: () => drawPdfHeader(doc),
+        })
+      })
+    }
 
     autoTable(doc, {
       startY: addPdfSection(doc, 'Anticipos, prestamos y saldos', 'Detalle contable de cada deuda: valor original entregado, abonos aplicados y saldo pendiente.'),

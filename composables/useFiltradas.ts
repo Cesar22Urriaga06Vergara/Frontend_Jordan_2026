@@ -11,7 +11,7 @@ export interface FiltradaItem {
   observaciones?: string
 }
 
-export interface FiltradasPendientes {
+interface FiltradasPendientes {
   fecha: string
   fechaOrigen?: string
   items: Array<{

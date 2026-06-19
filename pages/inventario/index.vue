@@ -16,7 +16,7 @@
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <StatCard label="Productos en stock" :value="String(inventarioActual.length)" :icon="Boxes" color="blue" :loading="loading" />
-      <StatCard label="Alertas de stock" :value="String(stockBajo.length)" :icon="AlertTriangle" color="orange" :loading="loading" />
+      <StatCard label="Alertas de stock" :value="String(stockBajo.length + tanquesBajo.length)" :icon="AlertTriangle" color="orange" :loading="loading" />
       <StatCard label="Produccion usable" :value="String(totalProducido)" :icon="Factory" color="green" :loading="loading" />
       <StatCard label="Tanques activos" :value="String(tanquesActivos.length)" :icon="Droplets" color="purple" :loading="loading" />
     </div>
@@ -25,7 +25,7 @@
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 class="font-semibold text-amber-900">Alertas de stock bajo</h2>
-          <p class="text-sm text-amber-700">Cuando una paca o producto llegue al mínimo, se marca aquí para producir o ajustar stock.</p>
+          <p class="text-sm text-amber-700">Cuando un producto llegue al mínimo (2 unidades por defecto), se marca aquí para producir o ajustar stock.</p>
         </div>
         <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{{ stockBajo.length }} alertas</span>
       </div>
@@ -44,6 +44,34 @@
             <td class="py-2 text-right text-amber-900">{{ formatQuantity(item.stockActual) }}</td>
             <td class="py-2 text-right text-amber-900">{{ formatQuantity(item.stockMinimo) }}</td>
             <td class="py-2 text-right font-semibold text-amber-900">{{ formatQuantity(faltanteStock(item)) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section v-if="tanquesBajo.length" class="rounded-lg border border-purple-200 bg-purple-50 p-4">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-semibold text-purple-900">Alertas de tanques bajos</h2>
+          <p class="text-sm text-purple-700">Los tanques con {{ INVENTARIO.LITROS_MINIMO_TANQUE }} litros o menos se marcan para revisar abastecimiento.</p>
+        </div>
+        <span class="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">{{ tanquesBajo.length }} alertas</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-purple-200 text-left text-xs uppercase text-purple-800">
+            <th class="pb-2 font-medium">Tanque</th>
+            <th class="pb-2 text-right font-medium">Litros</th>
+            <th class="pb-2 text-right font-medium">Mínimo</th>
+            <th class="pb-2 text-right font-medium">Faltante</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in tanquesBajo" :key="item.id" class="border-b border-purple-100">
+            <td class="py-2 font-medium text-gray-900">{{ item.tanqueAgua?.nombre ?? item.tanqueAguaId }}</td>
+            <td class="py-2 text-right text-purple-900">{{ formatQuantity(item.litrosContados) }} L</td>
+            <td class="py-2 text-right text-purple-900">{{ INVENTARIO.LITROS_MINIMO_TANQUE }} L</td>
+            <td class="py-2 text-right font-semibold text-purple-900">{{ formatQuantity(faltanteLitrosTanque(item)) }} L</td>
           </tr>
         </tbody>
       </table>
@@ -174,20 +202,35 @@
 
       <div class="card">
         <h2 class="mb-4 font-semibold text-gray-700">Tanques al cierre</h2>
+        <p class="mb-3 text-xs text-gray-500">Mínimo operativo por tanque: {{ INVENTARIO.LITROS_MINIMO_TANQUE }} litros.</p>
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b text-left text-xs uppercase text-gray-500">
               <th class="pb-2 font-medium">Tanque</th>
               <th class="pb-2 text-right font-medium">Litros</th>
+              <th class="pb-2 font-medium">Estado</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in tanquesCierre" :key="item.id" class="border-b border-gray-50">
+            <tr
+              v-for="item in tanquesCierre"
+              :key="item.id"
+              class="border-b border-gray-50"
+              :class="tanqueEstaBajo(item) ? 'bg-purple-50' : ''"
+            >
               <td class="py-2 font-medium text-gray-800">{{ item.tanqueAgua?.nombre ?? item.tanqueAguaId }}</td>
-              <td class="py-2 text-right text-gray-600">{{ item.litrosContados }}</td>
+              <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.litrosContados) }} L</td>
+              <td class="py-2">
+                <span
+                  class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                  :class="tanqueEstaBajo(item) ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-700'"
+                >
+                  {{ tanqueEstaBajo(item) ? 'Bajo' : 'OK' }}
+                </span>
+              </td>
             </tr>
             <tr v-if="!tanquesCierre.length">
-              <td colspan="2" class="py-4 text-center text-gray-400">Sin conteo de tanques para esta fecha</td>
+              <td colspan="3" class="py-4 text-center text-gray-400">Sin conteo de tanques para esta fecha</td>
             </tr>
           </tbody>
         </table>
@@ -330,6 +373,7 @@
 <script setup lang="ts">
 import { AlertTriangle, Boxes, Droplets, Factory, Pencil, Plus, RefreshCw } from 'lucide-vue-next'
 import { formatDate, formatQuantity, todayISO } from '~/utils/formats'
+import { INVENTARIO } from '~/utils/reglas-negocio'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -373,6 +417,17 @@ const totalProducido = computed(() =>
   produccion.value.reduce((sum, item) => sum + Number(item?.cantidad ?? 0), 0),
 )
 const tanquesActivos = computed(() => tanques.value.filter(tanque => tanque.activo))
+const tanquesBajo = computed(() =>
+  tanquesCierre.value.filter(item => tanqueEstaBajo(item)),
+)
+
+function tanqueEstaBajo(item: any) {
+  return Number(item?.litrosContados ?? 0) <= INVENTARIO.LITROS_MINIMO_TANQUE
+}
+
+function faltanteLitrosTanque(item: any) {
+  return Math.max(0, INVENTARIO.LITROS_MINIMO_TANQUE - Number(item?.litrosContados ?? 0))
+}
 
 function stockEstaBajo(item: any) {
   return Number(item?.stockActual ?? 0) <= Number(item?.stockMinimo ?? 0)
