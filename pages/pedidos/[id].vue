@@ -117,7 +117,15 @@
           </thead>
           <tbody>
             <tr v-for="d in pedido.detalles" :key="d.id" class="border-b border-gray-50 last:border-0">
-              <td class="px-4 py-3 text-left font-medium text-gray-800">{{ d.producto?.nombre ?? d.productoId }}</td>
+              <td class="px-4 py-3 text-left font-medium text-gray-800">
+                <div>{{ d.producto?.nombre ?? d.productoId }}</div>
+                <ProductUnitBadge
+                  v-if="d.producto"
+                  :categoria="d.producto.categoria"
+                  :unidad="d.producto.unidad"
+                  class="mt-1"
+                />
+              </td>
               <td class="px-4 py-3">{{ d.cantidad }}</td>
               <td class="px-4 py-3 text-right">{{ formatCurrency(d.precioUnitario) }}</td>
               <td class="px-4 py-3 text-right font-semibold">{{ formatCurrency(d.subtotal) }}</td>
@@ -163,7 +171,7 @@
 
           <div v-if="estadoDestino === 'REPROGRAMADO'">
             <FormField label="Fecha reprogramada *">
-              <input v-model="fechaReprogramacion" type="date" class="form-input" :min="todayISO()" />
+              <input v-model="fechaReprogramacion" type="date" class="form-input" :min="todayISOLocal()" />
             </FormField>
           </div>
 
@@ -207,7 +215,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, todayISO, todayISOLocal } from '~/utils/formats'
 import { ArrowLeft, MapPin, Pencil, Phone, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -226,7 +234,7 @@ const modalEstado = ref(false)
 const estadoDestino = ref('')
 const estadoNotas = ref('')
 const motivoNoEntrega = ref('')
-const fechaReprogramacion = ref(todayISO())
+const fechaReprogramacion = ref(todayISOLocal())
 const modalCancelConfirm = ref()
 const modalEliminarPedido = ref()
 const deleting = ref(false)
@@ -295,7 +303,7 @@ function abrirModalEstado(estado: string) {
   estadoDestino.value = estado
   estadoNotas.value = ''
   motivoNoEntrega.value = ''
-  fechaReprogramacion.value = todayISO()
+  fechaReprogramacion.value = todayISOLocal()
   if (estado === 'CANCELADO') modalCancelConfirm.value?.open()
   else modalEstado.value = true
 }

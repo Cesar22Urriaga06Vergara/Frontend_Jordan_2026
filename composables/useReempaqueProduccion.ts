@@ -1,11 +1,12 @@
 import { ref, computed } from 'vue'
 import { useApi } from '~/composables/useApi'
+import { useApiResponse } from '~/composables/useApiResponse'
 import { useErrorHandler } from '~/composables/useErrorHandler'
 import { useNotification } from '~/composables/useNotification'
 
 export interface ReempaqueItem {
   productoId?: number
-  cantidadFiltrada: number
+  cantidadFiltrada?: number
   cantidadReempacada: number
   observaciones?: string
 }
@@ -27,6 +28,7 @@ export interface FiltradasPendientes {
 
 export function useReempaque() {
   const api = useApi()
+  const apiResponse = useApiResponse()
   const errorHandler = useErrorHandler()
   const notification = useNotification()
 
@@ -39,29 +41,19 @@ export function useReempaque() {
     reempaqueItems.value.filter(
       (item) =>
         item.productoId &&
-        item.cantidadFiltrada > 0 &&
         item.cantidadReempacada >= 0,
     ),
   )
 
   const reempaqueMermaPendiente = computed(() => {
-    return reempaqueItemsValidos.value.reduce((total, item) => {
-      return total + (Number(item.cantidadFiltrada ?? 0) - Number(item.cantidadReempacada ?? 0))
-    }, 0)
+    // La merma se calcula en backend: cantidadFiltrada - cantidadReempacada
+    // Este computed solo es informativo
+    return 0
   })
 
   async function registrarReempaque(fecha?: string) {
     if (!reempaqueItemsValidos.value.length) {
       notification.warning('Agrega al menos un reempaque')
-      return
-    }
-
-    // Validaciones
-    const itemMayorReempacado = reempaqueItemsValidos.value.find(
-      (item) => Number(item.cantidadReempacada ?? 0) > Number(item.cantidadFiltrada ?? 0),
-    )
-    if (itemMayorReempacado) {
-      notification.error('La cantidad reempacada no puede ser mayor a la filtrada')
       return
     }
 
@@ -73,7 +65,6 @@ export function useReempaque() {
         {
           items: reempaqueItemsValidos.value.map((item) => ({
             productoId: item.productoId,
-            cantidadFiltrada: Number(item.cantidadFiltrada ?? 0),
             cantidadReempacada: Number(item.cantidadReempacada ?? 0),
             observaciones: item.observaciones || undefined,
           })),
@@ -101,8 +92,9 @@ export function useReempaque() {
         params: fecha ? { fecha } : undefined,
       })
 
-      filtradasPendientes.value = response.data
-      return response.data
+      const data = apiResponse.unwrap(response)
+      filtradasPendientes.value = data
+      return data
     } catch (error) {
       console.error('Error cargando filtradas pendientes:', error)
       filtradasPendientes.value = null

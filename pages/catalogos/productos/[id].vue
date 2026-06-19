@@ -22,16 +22,13 @@
         </FormField>
         <FormField label="Categoría *" :error="errors.categoria">
           <select v-model="form.categoria" class="form-input">
-            <option value="Normal">Normal</option>
-            <option value="Hielo">Hielo</option>
-            <option value="Picadillo">Picadillo</option>
-            <option value="Botellon">Botellon</option>
-            <option value="Recarga Botellon">Recarga Botellon</option>
-            <option value="Granel">Granel</option>
+            <option v-for="c in CATEGORIAS_PRODUCTO" :key="c.value" :value="c.value">{{ c.label }}</option>
           </select>
         </FormField>
         <FormField label="Unidad *" :error="errors.unidad">
-          <input v-model="form.unidad" class="form-input" />
+          <select v-model="form.unidad" class="form-input">
+            <option v-for="u in UNIDADES_PRODUCTO" :key="u.value" :value="u.value">{{ u.label }}</option>
+          </select>
         </FormField>
       </div>
 
@@ -55,6 +52,7 @@ import { useRoute } from '#imports'
 import { useApi } from '~/composables/useApi'
 import { useApiResponse } from '~/composables/useApiResponse'
 import { useNotification } from '~/composables/useNotification'
+import { CATEGORIAS_PRODUCTO, UNIDADES_PRODUCTO } from '~/utils/producto-labels'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -90,8 +88,8 @@ async function fetchProducto() {
     Object.assign(form, {
       codigo: producto.codigo ?? '',
       nombre: producto.nombre ?? '',
-      categoria: producto.categoria ?? 'Normal',
-      unidad: producto.unidad ?? '',
+      categoria: producto.categoria ?? 'PACA',
+      unidad: producto.unidad ?? 'UNIDAD',
       descripcion: producto.descripcion ?? '',
     })
   } catch (e: any) {

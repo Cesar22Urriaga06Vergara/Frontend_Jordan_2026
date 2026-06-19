@@ -48,7 +48,12 @@
         </thead>
         <tbody>
           <tr v-for="item in produccionHoy" :key="item.id ?? item.productoId" class="border-b border-gray-50">
-            <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
+            <td class="py-2 font-medium text-gray-800">
+              <div class="flex items-center gap-2">
+                <span>{{ item.producto?.nombre ?? item.productoId }}</span>
+                <ProductUnitBadge :categoria="item.producto?.categoria" :unidad="item.producto?.unidad" />
+              </div>
+            </td>
             <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.cantidad) }}</td>
           </tr>
           <tr v-if="!produccionHoy.length">

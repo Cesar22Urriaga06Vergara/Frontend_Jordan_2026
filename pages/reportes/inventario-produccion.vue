@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { AlertTriangle, Boxes, Droplets, Factory, FileSpreadsheet, FileText, RefreshCw } from 'lucide-vue-next'
 import { todayISO } from '~/utils/formats'
+import { formatProductoConMeta } from '~/utils/producto-labels'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -161,7 +162,7 @@ const produccionRows = computed(() =>
   estadosDiarios.value.flatMap((estado: any) =>
     (estado.apertura?.producciondiaria ?? []).map((item: any) => [
       displayDateISO(estado.fecha),
-      item.producto?.nombre ?? `Producto ${item.productoId ?? ''}`,
+      formatProductoConMeta(item.producto, item.productoId),
       Number(item.cantidad ?? 0),
       Number(item.cantidadFiltrada ?? 0),
       Number(item.cantidadReempacada ?? 0),
@@ -173,7 +174,7 @@ const produccionRows = computed(() =>
 
 const inventarioActualRows = computed(() =>
   inventarioActual.value.map((item: any) => [
-    item.producto?.nombre ?? `Producto ${item.productoId ?? ''}`,
+    formatProductoConMeta(item.producto, item.productoId),
     Number(item.stockActual ?? 0),
     Number(item.stockMinimo ?? 0),
     Number(item.stockActual ?? 0) <= Number(item.stockMinimo ?? 0) ? 'Bajo' : 'OK',
@@ -182,7 +183,7 @@ const inventarioActualRows = computed(() =>
 
 const stockBajoRows = computed(() =>
   stockBajo.value.map((item: any) => [
-    item.producto?.nombre ?? `Producto ${item.productoId ?? ''}`,
+    formatProductoConMeta(item.producto, item.productoId),
     Number(item.stockActual ?? 0),
     Number(item.stockMinimo ?? 0),
     Math.max(0, Number(item.stockMinimo ?? 0) - Number(item.stockActual ?? 0)),
@@ -193,7 +194,7 @@ const cierreInventarioRows = computed(() =>
   estadosDiarios.value.flatMap((estado: any) =>
     (estado.cierre?.cierreInventario ?? []).map((item: any) => [
       displayDateISO(estado.fecha),
-      item.producto?.nombre ?? `Producto ${item.productoId ?? ''}`,
+      formatProductoConMeta(item.producto, item.productoId),
       Number(item.cantidadInicial ?? 0),
       Number(item.cantidadProducida ?? 0),
       Number(item.cantidadSalida ?? 0),

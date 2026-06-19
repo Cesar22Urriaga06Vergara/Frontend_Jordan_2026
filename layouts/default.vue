@@ -71,6 +71,7 @@
           </NavGroup>
 
           <NavGroup v-if="!authStore.isContador" label="Sistema">
+            <NavItem v-if="authStore.isAdmin" to="/auditoria" :icon="ShieldCheck" label="Auditoría" @click="closeSidebarOnMobile" />
             <NavItem to="/configuracion" :icon="Settings" label="Configuración" @click="closeSidebarOnMobile" />
           </NavGroup>
         </nav>
@@ -168,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { AlertTriangle, ArrowLeft, BarChart3, Boxes, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, CreditCard, Factory, Home, Layers3, LogOut, Menu, Package, Receipt, Settings, Truck, UserCog, UserRound, WalletCards } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, BarChart3, Boxes, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, CreditCard, Factory, Home, Layers3, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, Truck, UserCog, UserRound, WalletCards } from 'lucide-vue-next'
 import { provide, computed } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import Breadcrumb from '~/components/layout/Breadcrumb.vue'
@@ -320,6 +321,10 @@ function resolvePageMeta(path: string): {
     '/configuracion': {
       title: 'Configuración',
       crumbs: [{ label: 'Configuración', href: '/configuracion' }],
+    },
+    '/auditoria': {
+      title: 'Auditoría',
+      crumbs: [{ label: 'Auditoría', href: '/auditoria' }],
     },
   }
 

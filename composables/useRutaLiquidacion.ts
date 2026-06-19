@@ -20,6 +20,7 @@ export type LiqPedidoForm = {
     | 'REPROGRAMAR'
     | 'NO_ENTREGADO'
     | 'CANCELAR'
+    | 'DEVUELTO'
   tipoPago: 'EFECTIVO' | 'TRANSFERENCIA' | 'AMBOS'
   montoEfectivo: number
   montoTransferencia: number
@@ -37,9 +38,11 @@ function toNumberOrZero(value: unknown): number {
 const SALDO_MINIMO_CARTERA = 50
 
 function localISO(date = new Date()): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
+  // Ajustar por UTC-5 para obtener la fecha operacional correcta
+  const utc5Time = new Date(date.getTime() - 5 * 60 * 60 * 1000)
+  const y = utc5Time.getUTCFullYear()
+  const m = String(utc5Time.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(utc5Time.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
 
@@ -237,12 +240,14 @@ export function useRutaLiquidacion() {
     if (p.estadoEntrega === 'ENTREGADO_CREDITO') return 'Entregado a credito'
     if (p.estadoEntrega === 'REPROGRAMAR') return 'Reprogramar'
     if (p.estadoEntrega === 'CANCELAR') return 'Cancelar'
+    if (p.estadoEntrega === 'DEVUELTO') return 'Devuelto'
     return 'No entregado final'
   }
 
   function noEntregadoAccion(p: LiqPedidoForm) {
     if (p.estadoEntrega === 'REPROGRAMAR') return 'REPROGRAMAR'
     if (p.estadoEntrega === 'CANCELAR') return 'CANCELAR'
+    if (p.estadoEntrega === 'DEVUELTO') return 'DEVUELTO'
     return 'NO_ENTREGADO'
   }
 

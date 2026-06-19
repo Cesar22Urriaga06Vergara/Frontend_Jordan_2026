@@ -119,7 +119,7 @@
                 <button
                   v-if="puedeEliminarVenta(v)"
                   class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1 text-red-600 hover:text-red-700"
-                  @click="eliminarVenta(v)"
+                  @click="abrirEliminarVenta(v)"
                 >
                   <Trash2 class="h-3.5 w-3.5" />
                   Eliminar
@@ -283,7 +283,15 @@
           </thead>
           <tbody>
             <tr v-for="d in ventaDetalle.detalles" :key="d.id" class="border-b border-gray-50">
-              <td class="py-1.5">{{ d.producto?.nombre ?? d.productoId }}</td>
+              <td class="py-1.5">
+                <div>{{ d.producto?.nombre ?? d.productoId }}</div>
+                <ProductUnitBadge
+                  v-if="d.producto"
+                  :categoria="d.producto.categoria"
+                  :unidad="d.producto.unidad"
+                  class="mt-1"
+                />
+              </td>
               <td class="py-1.5 text-center">{{ d.cantidad }}</td>
               <td class="py-1.5 text-right">{{ formatCurrency(d.precioUnitario) }}</td>
               <td class="py-1.5 text-right">{{ formatCurrency(d.subtotal) }}</td>
@@ -304,6 +312,18 @@
         <button class="btn-secondary w-full" @click="modalDetalle = false">Cerrar</button>
       </div>
     </div>
+
+    <ModalConfirmacion
+      ref="modalEliminarVenta"
+      titulo="Eliminar venta"
+      descripcion="La venta se eliminará definitivamente si no tiene pagos registrados."
+      textoConfirm="Eliminar"
+      textoCancel="Cancelar"
+      :detalles="{ Venta: ventaAEliminar?.numero, Cliente: ventaAEliminar?.cliente?.nombre }"
+      advertencia="Si la venta ya tiene pagos o está liquidada, usa anular según corresponda."
+      @confirm="confirmarEliminarVenta"
+      @cancel="cerrarEliminarVenta"
+    />
   </div>
 </template>
 
@@ -386,6 +406,8 @@ const totalPagoForm = computed(() => {
 // Detalle
 const modalDetalle = ref(false)
 const ventaDetalle = ref<any>(null)
+const ventaAEliminar = ref<any>(null)
+const modalEliminarVenta = ref()
 
 async function fetchVentas() {
   loading.value = true
@@ -516,12 +538,23 @@ function puedeEliminarVenta(v: any) {
   return !v.liquidacionRutaId
 }
 
-async function eliminarVenta(v: any) {
-  if (!window.confirm(`Eliminar la venta ${v.numero}?`)) return
+function abrirEliminarVenta(v: any) {
+  ventaAEliminar.value = v
+  modalEliminarVenta.value?.open()
+}
+
+function cerrarEliminarVenta() {
+  ventaAEliminar.value = null
+  modalEliminarVenta.value?.close()
+}
+
+async function confirmarEliminarVenta() {
+  if (!ventaAEliminar.value) return
   saving.value = true
   try {
-    await api.delete(`/operaciones/ventas/${v.id}`)
-    notify.success(`Venta ${v.numero} eliminada`)
+    await api.delete(`/operaciones/ventas/${ventaAEliminar.value.id}`)
+    notify.success(`Venta ${ventaAEliminar.value.numero} eliminada`)
+    cerrarEliminarVenta()
     await fetchVentas()
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'No se pudo eliminar la venta')

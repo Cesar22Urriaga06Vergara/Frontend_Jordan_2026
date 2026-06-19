@@ -141,10 +141,10 @@
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField v-if="pagoForm.formaPago === 'EFECTIVO' || pagoForm.formaPago === 'AMBOS'" label="Efectivo *">
-            <input v-model.number="pagoForm.montoEfectivo" class="form-input" type="number" min="0" step="1" />
+            <CurrencyInput v-model="pagoForm.montoEfectivo" placeholder="$0" />
           </FormField>
           <FormField v-if="pagoForm.formaPago === 'TRANSFERENCIA' || pagoForm.formaPago === 'AMBOS'" label="Transferencia *">
-            <input v-model.number="pagoForm.montoTransferencia" class="form-input" type="number" min="0" step="1" />
+            <CurrencyInput v-model="pagoForm.montoTransferencia" placeholder="$0" />
           </FormField>
         </div>
 

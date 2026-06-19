@@ -34,7 +34,11 @@ const parseCalendarDate = (date: string | Date | null | undefined): Date | null 
 
 const parseDateTime = (date: string | Date | null | undefined): Date | null => {
   if (!date) return null
-  if (date instanceof Date) return date
+  if (date instanceof Date) {
+    // Si es una instancia de Date, ajustar por UTC-5
+    // Backend envía en UTC, convertir a hora local para mostrar
+    return new Date(date.getTime() - 5 * 60 * 60 * 1000)
+  }
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     const [y, m, d] = date.split('-').map(Number)
     return new Date(y, m - 1, d)
@@ -67,9 +71,25 @@ export const formatDateTime = (date: string | Date | null | undefined): string =
 }
 
 export const todayISO = (): string => {
+  // DEPRECATED: Use todayISOLocal() instead. This doesn't account for UTC-5
   const now = new Date()
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/**
+ * Obtiene la fecha ISO de hoy en zona operacional UTC-5
+ * Crítico para validaciones de fecha mínima en inputs (hoy o después)
+ * @returns Fecha ISO en formato YYYY-MM-DD ajustada a UTC-5
+ */
+export const todayISOLocal = (): string => {
+  const now = new Date()
+  // Offset UTC-5 en milisegundos: -5 * 60 * 60 * 1000 = -18,000,000
+  const utc5Time = new Date(now.getTime() - 5 * 60 * 60 * 1000)
+  const y = utc5Time.getUTCFullYear()
+  const m = String(utc5Time.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(utc5Time.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }

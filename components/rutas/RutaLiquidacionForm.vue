@@ -55,6 +55,7 @@
             <option value="REPROGRAMAR">Reprogramar para proxima ruta</option>
             <option value="NO_ENTREGADO">No entregado final</option>
             <option value="CANCELAR">Cancelar pedido</option>
+            <option value="DEVUELTO">Devuelto</option>
           </select>
 
           <div v-if="p.estadoEntrega === 'ENTREGADO_PAGADO'" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -97,16 +98,16 @@
                 v-model="p.fechaReprogramacion"
                 class="form-input text-sm"
                 type="date"
-                :min="todayISO()"
+                :min="todayISOLocal()"
               />
             </FormField>
 
-            <FormField :label="p.estadoEntrega === 'REPROGRAMAR' ? 'Motivo reprogramacion *' : 'Motivo no entrega'">
+            <FormField :label="p.estadoEntrega === 'REPROGRAMAR' ? 'Motivo reprogramacion *' : p.estadoEntrega === 'DEVUELTO' ? 'Motivo del devuelto *' : 'Motivo no entrega'">
               <input
                 v-model="p.razonNoEntrega"
                 class="form-input text-sm"
                 type="text"
-                placeholder="Ej. cliente no recibe hoy"
+                :placeholder="p.estadoEntrega === 'REPROGRAMAR' ? 'Ej. cliente pide entregar en otra fecha' : p.estadoEntrega === 'DEVUELTO' ? 'Ej. producto dañado' : 'Ej. cliente no recibe hoy'"
               />
             </FormField>
 
@@ -150,6 +151,9 @@
           </p>
           <p v-if="p.estadoEntrega === 'CANCELAR'" class="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
             No genera venta ni descuenta inventario. El pedido queda cancelado.
+          </p>
+          <p v-if="p.estadoEntrega === 'DEVUELTO'" class="rounded-md border border-purple-100 bg-purple-50 px-3 py-2 text-xs text-purple-700">
+            El pedido se marca como devuelto y se retira de la ruta actual. Puede ser re-asignado a otra ruta si es necesario.
           </p>
         </div>
       </div>
@@ -323,7 +327,7 @@
 import { computed, ref, toValue } from 'vue'
 import { useRutaLiquidacion } from '~/composables/useRutaLiquidacion'
 import { useMoneyInput } from '~/composables/useMoneyInput'
-import { todayISO } from '~/utils/formats'
+import { todayISO, todayISOLocal } from '~/utils/formats'
 
 const props = defineProps<{
   saving: boolean

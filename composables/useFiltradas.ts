@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { useApi } from '~/composables/useApi'
+import { useApiResponse } from '~/composables/useApiResponse'
 import { useErrorHandler } from '~/composables/useErrorHandler'
 import { useNotification } from '~/composables/useNotification'
 import { useDialog } from '~/composables/useDialog'
@@ -27,6 +28,7 @@ export interface FiltradasPendientes {
 
 export function useFiltradas() {
   const api = useApi()
+  const apiResponse = useApiResponse()
   const errorHandler = useErrorHandler()
   const notification = useNotification()
 
@@ -51,7 +53,6 @@ export function useFiltradas() {
       .map((item) => ({
         productoId: Number(item.productoId),
         cantidadFiltrada: Math.trunc(Number(item.cantidadFiltrada ?? 0)),
-        cantidadReempacada: 0,
         observaciones: item.observaciones,
       }))
       .filter((it) => Number.isFinite(it.productoId) && it.productoId > 0 && it.cantidadFiltrada > 0)
@@ -71,13 +72,9 @@ export function useFiltradas() {
       try {
         // Para evitar confusión usamos el endpoint dedicado de filtradas
         const payload: any = { items: itemsPayload.map(it => ({ productoId: it.productoId, cantidadFiltrada: it.cantidadFiltrada, observaciones: it.observaciones })) }
-        // eslint-disable-next-line no-console
-        console.debug('POST /diario/produccion/filtrada payload:', JSON.stringify(payload), 'fecha(query):', fecha)
         const response = await api.post('/diario/produccion/filtrada', payload, {
           params: fecha ? { fecha } : undefined,
         })
-        // eslint-disable-next-line no-console
-        console.debug('Response /diario/produccion/filtrada:', JSON.stringify(response.data))
         notification.success('Filtradas registradas correctamente')
         filtradaItems.value = []
         return response.data
@@ -111,8 +108,9 @@ export function useFiltradas() {
         params: fecha ? { fecha } : undefined,
       })
 
-      filtradasPendientes.value = response.data
-      return response.data
+      const data = apiResponse.unwrap(response) as FiltradasPendientes
+      filtradasPendientes.value = data
+      return data
     } catch (error) {
       console.error('Error cargando filtradas pendientes:', error)
       filtradasPendientes.value = null

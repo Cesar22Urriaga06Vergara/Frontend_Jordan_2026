@@ -242,11 +242,16 @@
                 </thead>
                 <tbody>
                   <tr v-for="item in produccionRegistrada" :key="item.id" class="border-t border-gray-100">
-                    <td class="px-3 py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? productoNombre(item.productoId) }}</td>
-                    <td class="px-3 py-2 text-right">{{ Number(item.cantidad ?? 0) }}</td>
-                    <td class="px-3 py-2 text-right">{{ Number(item.cantidadFiltrada ?? 0) }}</td>
-                    <td class="px-3 py-2 text-right">{{ Number(item.cantidadReempacada ?? 0) }}</td>
-                    <td class="px-3 py-2 text-right text-red-600">{{ Number(item.cantidadMerma ?? 0) }}</td>
+                    <td class="px-3 py-2 font-medium text-gray-800">
+                      <div class="flex items-center gap-2">
+                        <span>{{ item.producto?.nombre ?? productoNombre(item.productoId) }}</span>
+                        <ProductUnitBadge :categoria="item.producto?.categoria" :unidad="item.producto?.unidad" />
+                      </div>
+                    </td>
+                    <td class="px-3 py-2 text-right">{{ formatQuantity(Number(item.cantidad ?? 0)) }}</td>
+                    <td class="px-3 py-2 text-right">{{ formatQuantity(Number(item.cantidadFiltrada ?? 0)) }}</td>
+                    <td class="px-3 py-2 text-right">{{ formatQuantity(Number(item.cantidadReempacada ?? 0)) }}</td>
+                    <td class="px-3 py-2 text-right text-red-600">{{ formatQuantity(Number(item.cantidadMerma ?? 0)) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -397,17 +402,16 @@
                 <div
                   v-for="(item, i) in reempaqueItems"
                   :key="i"
-                  class="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_110px_130px_1fr_36px]"
+                  class="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_130px_1fr_36px]"
                 >
                   <div>
                     <select v-model="item.productoId" class="form-input">
                       <option :value="undefined">Seleccionar...</option>
                       <option v-for="p in productosConProduccion" :key="p.productoId" :value="p.productoId">
-                        {{ p.nombre }} - disp. {{ p.cantidad }}
+                        {{ p.nombre }} - filt. {{ produccionRegistrada.find((x: any) => x.productoId === p.productoId)?.cantidadFiltrada ?? 0 }}
                       </option>
                     </select>
                   </div>
-                  <input v-model.number="item.cantidadFiltrada" class="form-input" type="number" min="1" placeholder="Filtradas" />
                   <input v-model.number="item.cantidadReempacada" class="form-input" type="number" min="0" placeholder="Reempacadas" />
                   <input v-model="item.observaciones" class="form-input" type="text" placeholder="Observaciones" />
                   <button class="rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600" @click="reempaqueItems.splice(i, 1)">
@@ -614,7 +618,7 @@ import {
   Truck,
   WalletCards,
 } from 'lucide-vue-next'
-import { formatCurrency, formatDate, formatDateTime, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, formatDateTime, formatQuantity, todayISO } from '~/utils/formats'
 import { defaultTanquesAgua, mapTanquesCatalogo } from '~/utils/tanquesAgua'
 import { useFiltradas } from '~/composables/useFiltradas'
 
@@ -659,7 +663,7 @@ const aperturaSaldoInicial = ref(0)
 const produccionItems = ref<{ productoId: number | undefined; cantidad: number }[]>([])
 const reempaqueItems = ref<Array<{
   productoId: number | undefined
-  cantidadFiltrada: number
+  cantidadFiltrada?: number
   cantidadReempacada: number
   observaciones: string
 }>>([])
@@ -863,7 +867,13 @@ function produccionDisponible(productoId: number | undefined) {
     (item: any) => item.productoId === productoId,
   )
   const prod = produccionRegistrada.value.find((item: any) => item.productoId === productoId)
-  return Number(inv?.cantidadInicial ?? 0) + Number(prod?.cantidad ?? 0)
+  const inventarioInicial = Number(inv?.cantidadInicial ?? 0)
+  const produccionDia = Number(prod?.cantidad ?? 0)
+  const filtradas = Number(prod?.cantidadFiltrada ?? 0)
+  const reempacadas = Number(prod?.cantidadReempacada ?? 0)
+  
+  // Stock disponible = Inicial + Producción - (Filtradas + Reempacadas)
+  return inventarioInicial + produccionDia - filtradas - reempacadas
 }
 
 function onFechaChange() {
@@ -1092,7 +1102,10 @@ async function registrarProduccion() {
     }, { params: { fecha: fechaSeleccionada.value } })
     notify.success('Producción registrada')
     produccionItems.value = []
+    // Esperar a que estado se actualice COMPLETAMENTE antes de continuar
     await fetchEstado()
+    // Pequeña pausa para asegurar que UI se sincroniza
+    await new Promise(resolve => setTimeout(resolve, 500))
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al registrar producción')
   } finally {
@@ -1106,47 +1119,47 @@ async function registrarFiltradasUI() {
     return
   }
 
+  // Validar contra disponible calculado localmente
   const itemMayorDisponible = filtradaItemsValidos.value.find(
     item => Number(item.cantidadFiltrada ?? 0) > produccionDisponible(item.productoId),
   )
   if (itemMayorDisponible) {
-    notify.error(`La cantidad filtrada supera el stock disponible de ${productoNombre(itemMayorDisponible.productoId)}`)
+    const disponible = produccionDisponible(itemMayorDisponible.productoId)
+    const cantidad = Number(itemMayorDisponible.cantidadFiltrada ?? 0)
+    const nombre = productoNombre(itemMayorDisponible.productoId)
+    notify.error(`${nombre}: intenta filtrar ${cantidad} pero solo hay ${disponible} disponibles`)
     return
   }
 
   try {
     await registrarFiltrada(fechaSeleccionada.value)
     notify.success('Filtradas registradas')
-    await fetchEstado()
+    await Promise.all([
+      fetchEstado(),
+      cargarFilttradasPendientes(fechaSeleccionada.value),
+    ])
   } catch (e: any) {
-    notify.error(e?.response?.data?.message ?? 'Error al registrar filtradas')
+    const msg = e?.response?.data?.message ?? 'Error al registrar filtradas'
+    notify.error(msg)
   }
 }
 
 async function registrarReempaque() {
-  const itemMayorReempacado = reempaqueItemsValidos.value.find(
-    item => Number(item.cantidadReempacada ?? 0) > Number(item.cantidadFiltrada ?? 0),
-  )
-  if (itemMayorReempacado) {
-    notify.error('La cantidad reempacada no puede ser mayor a la filtrada')
-    return
-  }
-
-  // Nota: la validación de disponibilidad se delega al backend o al flujo de 'filtradas pendientes'.
-
   savingReempaque.value = true
   try {
     await api.post('/diario/produccion/reempaque', {
       items: reempaqueItemsValidos.value.map(item => ({
         productoId: item.productoId,
-        cantidadFiltrada: Number(item.cantidadFiltrada ?? 0),
         cantidadReempacada: Number(item.cantidadReempacada ?? 0),
         observaciones: item.observaciones || undefined,
       })),
     }, { params: { fecha: fechaSeleccionada.value } })
     notify.success('Reempaque registrado')
     reempaqueItems.value = []
-    await fetchEstado()
+    await Promise.all([
+      fetchEstado(),
+      cargarFilttradasPendientes(fechaSeleccionada.value),
+    ])
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al registrar reempaque')
   } finally {

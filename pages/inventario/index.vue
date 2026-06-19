@@ -66,7 +66,15 @@
         </thead>
         <tbody>
           <tr v-for="item in inventarioActual" :key="item.id" class="border-b border-gray-50">
-            <td class="py-2 font-medium text-gray-800">{{ item.producto?.nombre ?? item.productoId }}</td>
+            <td class="py-2 font-medium text-gray-800">
+              <div>{{ item.producto?.nombre ?? item.productoId }}</div>
+              <ProductUnitBadge
+                v-if="item.producto"
+                :categoria="item.producto.categoria"
+                :unidad="item.producto.unidad"
+                class="mt-1"
+              />
+            </td>
             <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.stockActual) }}</td>
             <td class="py-2 text-right text-gray-600">{{ formatQuantity(item.stockMinimo) }}</td>
             <td class="py-2">
@@ -265,20 +273,52 @@
     </div>
 
     <div v-if="modalAjusteStock" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="modalAjusteStock = false">
-      <div class="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
+      <div class="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl">
         <div>
-          <h2 class="text-lg font-bold text-gray-800">Corregir stock</h2>
-          <p class="mt-1 text-sm text-gray-500">{{ ajusteStockForm.productoNombre }}</p>
+          <h2 class="text-lg font-bold text-gray-800">Corregir stock de {{ ajusteStockForm.productoNombre }}</h2>
+          <p class="mt-1 text-sm text-gray-500">Revisar el stock actual, ingresar la cantidad real y justificar el cambio.</p>
         </div>
-        <FormField label="Cantidad real *">
-          <input v-model.number="ajusteStockForm.nuevaCantidad" class="form-input" type="number" min="0" />
+
+        <!-- Comparativo antes/después -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <p class="text-xs font-bold uppercase text-blue-600">Stock actual (antes)</p>
+            <p class="mt-2 text-2xl font-black text-blue-900">{{ formatQuantity(ajusteStockForm.cantidadAnterior) }}</p>
+          </div>
+          <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+            <p class="text-xs font-bold uppercase text-green-600">Stock nuevo (después)</p>
+            <p class="mt-2 text-2xl font-black text-green-900">{{ formatQuantity(ajusteStockForm.nuevaCantidad) }}</p>
+          </div>
+        </div>
+
+        <!-- Diferencia y clasificación -->
+        <div v-if="ajusteStockForm.nuevaCantidad !== ajusteStockForm.cantidadAnterior" class="rounded-lg p-4" :class="ajusteStockForm.nuevaCantidad > ajusteStockForm.cantidadAnterior ? 'border border-green-200 bg-green-50' : 'border border-red-200 bg-red-50'">
+          <div class="flex items-end justify-between gap-4">
+            <div>
+              <p class="text-xs font-bold uppercase" :class="ajusteStockForm.nuevaCantidad > ajusteStockForm.cantidadAnterior ? 'text-green-600' : 'text-red-600'">
+                {{ ajusteStockForm.nuevaCantidad > ajusteStockForm.cantidadAnterior ? '📈 Incremento' : '📉 Decremento' }}
+              </p>
+              <p class="mt-1 text-lg font-bold" :class="ajusteStockForm.nuevaCantidad > ajusteStockForm.cantidadAnterior ? 'text-green-900' : 'text-red-900'">
+                {{ Math.abs(ajusteStockForm.nuevaCantidad - ajusteStockForm.cantidadAnterior) }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Entrada de cantidad real -->
+        <FormField label="Cantidad real contada en físico *">
+          <input v-model.number="ajusteStockForm.nuevaCantidad" class="form-input text-lg font-semibold" type="number" min="0" placeholder="0" />
         </FormField>
-        <FormField label="Razón del ajuste *">
-          <textarea v-model="ajusteStockForm.razon" class="form-input resize-none" rows="3" placeholder="Corrección por error de digitación" />
+
+        <!-- Razón del ajuste -->
+        <FormField label="Razón del ajuste *" message="Explica brevemente por qué se requiere este cambio (ej: error de digitación, merma encontrada, etc.)">
+          <textarea v-model="ajusteStockForm.razon" class="form-input resize-none" rows="3" placeholder="Ej: Se encontraron 5 unidades dañadas durante conteo físico" />
         </FormField>
-        <div class="flex justify-end gap-2 pt-1">
+
+        <!-- Botones de acción -->
+        <div class="flex justify-end gap-2 border-t pt-4">
           <button class="btn-secondary" @click="modalAjusteStock = false">Cancelar</button>
-          <button class="btn-primary" :disabled="savingAjusteStock" @click="guardarAjusteStock">
+          <button class="btn-primary" :disabled="savingAjusteStock || !ajusteStockForm.razon.trim()" @click="guardarAjusteStock">
             {{ savingAjusteStock ? 'Guardando...' : 'Guardar ajuste' }}
           </button>
         </div>
@@ -324,6 +364,7 @@ const tanqueForm = reactive({
 const ajusteStockForm = reactive({
   productoId: null as number | null,
   productoNombre: '',
+  cantidadAnterior: 0,
   nuevaCantidad: 0,
   razon: '',
 })
@@ -457,6 +498,7 @@ async function activarTanque(tanque: any) {
 function openAjusteStock(item: any) {
   ajusteStockForm.productoId = Number(item.productoId ?? item.producto?.id ?? 0)
   ajusteStockForm.productoNombre = item.producto?.nombre ?? `Producto ${ajusteStockForm.productoId}`
+  ajusteStockForm.cantidadAnterior = Number(item.stockActual ?? 0)
   ajusteStockForm.nuevaCantidad = Number(item.stockActual ?? 0)
   ajusteStockForm.razon = ''
   modalAjusteStock.value = true

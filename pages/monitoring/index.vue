@@ -151,6 +151,8 @@ import { BarChart3, Clock, TrendingUp, Zap, AlertTriangle } from 'lucide-vue-nex
 import { useApi } from '~/composables/useApi'
 import { useApiResponse } from '~/composables/useApiResponse'
 
+definePageMeta({ middleware: 'auth' })
+
 const api = useApi()
 const apiResponse = useApiResponse()
 

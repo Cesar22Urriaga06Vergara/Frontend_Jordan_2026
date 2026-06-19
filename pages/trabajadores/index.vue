@@ -101,9 +101,9 @@
                     <HandCoins class="h-3.5 w-3.5" />
                     Pagar
                   </button>
-                  <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="abrirAnticipoModal(t)">
+                  <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="abrirPrestamoModalConTrabajador(t)">
                     <WalletCards class="h-3.5 w-3.5" />
-                    Anticipo
+                    Préstamo
                   </button>
                 </div>
               </td>
@@ -216,7 +216,10 @@
               <th class="pb-2 font-medium">Trabajador</th>
               <th class="pb-2 font-medium">Labor</th>
               <th class="pb-2 font-medium">Unidades</th>
-              <th class="pb-2 font-medium">Total</th>
+              <th class="pb-2 font-medium">Causado</th>
+              <th class="pb-2 font-medium">Pagado</th>
+              <th class="pb-2 font-medium">Saldo</th>
+              <th class="pb-2 font-medium">Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -224,23 +227,40 @@
               <td class="py-1.5">{{ l.trabajador?.nombre ?? '—' }}</td>
               <td class="py-1.5">{{ l.laborTarifa?.laborTipo?.nombre ?? '—' }}</td>
               <td class="py-1.5 text-center">{{ l.cantidadRealizado ?? '—' }}</td>
-              <td class="py-1.5 text-right font-medium text-green-700">{{ formatCurrency(Number(l.montoAPagar ?? 0)) }}</td>
+              <td class="py-1.5 text-right text-gray-700">{{ formatCurrency(Number(l.montoAPagar ?? 0)) }}</td>
+              <td class="py-1.5 text-right text-blue-700">{{ formatCurrency(Number(l.montoPagado ?? 0)) }}</td>
+              <td class="py-1.5 text-right font-medium text-orange-700">{{ formatCurrency(Number(l.saldoPendiente ?? l.montoAPagar ?? 0)) }}</td>
+              <td class="py-1.5 text-center">
+                <span class="px-2 py-0.5 rounded text-xs font-semibold" :class="estadoLaborClass(l.estadoPago)">
+                  {{ estadoLaborLabel(l.estadoPago) }}
+                </span>
+              </td>
             </tr>
             <tr v-if="!laboresHoy.length">
-              <td colspan="4" class="py-4 text-center text-gray-400">Sin labores registradas hoy</td>
+              <td colspan="7" class="py-4 text-center text-gray-400">Sin labores registradas hoy</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- TAB: Anticipos / deudas -->
-    <div v-if="tabActivo === 'anticipos'" class="space-y-4">
-      <div class="flex gap-3">
-        <select v-model="filtroTrabAnticipos" class="form-input w-52" @change="fetchAnticipos">
+    <!-- TAB: Préstamos -->
+    <div v-if="tabActivo === 'prestamos'" class="space-y-4">
+      <div class="flex gap-3 flex-col sm:flex-row sm:items-center">
+        <select v-model="filtroTrabPrestamos" class="form-input flex-1" @change="fetchPrestamos">
           <option value="">Todos los trabajadores</option>
           <option v-for="t in trabajadores" :key="t.id" :value="t.id">{{ t.nombre }}</option>
         </select>
+        <select v-model="trabSeleccionado" class="form-input flex-1" @change="prestamoForm.monto = 0">
+          <option :value="null">Seleccionar trabajador para préstamo...</option>
+          <option v-for="t in trabajadores" :key="t.id" :value="t">
+            {{ t.nombre }} · Saldo: {{ formatCurrency(t.saldoTotal ?? 0) }}
+          </option>
+        </select>
+        <button class="btn-primary inline-flex items-center gap-2 text-sm whitespace-nowrap" :disabled="!trabSeleccionado?.id" @click="abrirPrestamoModal(trabSeleccionado)">
+          <Plus class="h-4 w-4" />
+          Nuevo préstamo
+        </button>
       </div>
 
       <div class="card overflow-x-auto p-0">
@@ -249,42 +269,44 @@
             <tr class="text-center text-gray-500 border-b text-xs uppercase">
               <th class="px-4 py-3 font-medium">Trabajador</th>
               <th class="px-4 py-3 font-medium">Número</th>
-              <th class="px-4 py-3 font-medium">Tipo</th>
-              <th class="px-4 py-3 font-medium">Monto</th>
-              <th class="px-4 py-3 font-medium">Saldo</th>
+              <th class="px-4 py-3 font-medium">Monto prestado</th>
+              <th class="px-4 py-3 font-medium">Abonado</th>
+              <th class="px-4 py-3 font-medium">Saldo pendiente</th>
               <th class="px-4 py-3 font-medium">Estado</th>
               <th class="px-4 py-3 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loadingAnt">
+            <tr v-if="loadingPrestamos">
               <td colspan="7" class="px-4 py-8 text-center text-gray-400">Cargando…</td>
             </tr>
             <tr
-              v-for="a in anticipos"
-              :key="a.id"
+              v-for="p in prestamos"
+              :key="p.id"
               class="border-b border-gray-50 hover:bg-gray-50"
             >
-              <td class="px-4 py-3">{{ a.trabajador?.nombre ?? '—' }}</td>
-              <td class="px-4 py-3 font-medium">{{ a.numero ?? a.id }}</td>
-              <td class="px-4 py-3">{{ a.tipo ?? a.tipoMovimiento ?? '—' }}</td>
-              <td class="px-4 py-3 text-right">{{ formatCurrency(a.monto) }}</td>
-              <td class="px-4 py-3 text-right" :class="(a.saldoPendiente ?? a.saldo ?? 0) > 0 ? 'text-orange-600' : 'text-gray-400'">
-                {{ formatCurrency(a.saldoPendiente ?? a.saldo ?? 0) }}
+              <td class="px-4 py-3">
+                <p class="font-medium text-gray-800">{{ p.trabajador?.nombre ?? '—' }}</p>
+              </td>
+              <td class="px-4 py-3 font-medium">{{ p.numero ?? p.id }}</td>
+              <td class="px-4 py-3 text-right font-medium">{{ formatCurrency(p.monto) }}</td>
+              <td class="px-4 py-3 text-right text-blue-600">{{ formatCurrency(p.totalAbonado ?? 0) }}</td>
+              <td class="px-4 py-3 text-right" :class="(p.saldoPendiente ?? 0) > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400'">
+                {{ formatCurrency(p.saldoPendiente ?? 0) }}
               </td>
               <td class="px-4 py-3">
-                <EstadoBadge :estado="a.estado ?? 'ACTIVO'" />
+                <EstadoBadge :estado="p.estado ?? 'ACTIVO'" />
               </td>
               <td class="px-4 py-3 text-right">
                 <button
-                  v-if="(a.saldoPendiente ?? a.saldo ?? 0) > 0"
-                  class="text-xs text-blue-600 hover:underline"
-                  @click="abrirAbonoModal(a)"
+                  v-if="(p.saldoPendiente ?? 0) > 0"
+                  class="text-xs text-blue-600 hover:underline font-medium"
+                  @click="abrirAbonoModal(p)"
                 >Abonar</button>
               </td>
             </tr>
-            <tr v-if="!anticipos.length && !loadingAnt">
-              <td colspan="7" class="px-4 py-8 text-center text-gray-400">Sin anticipos.</td>
+            <tr v-if="!prestamos.length && !loadingPrestamos">
+              <td colspan="7" class="px-4 py-8 text-center text-gray-400">Sin préstamos registrados.</td>
             </tr>
           </tbody>
         </table>
@@ -299,13 +321,34 @@
     >
       <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <h2 class="font-bold text-gray-800">Pagar a {{ trabSeleccionado?.nombre }}</h2>
-        <div class="rounded-lg border border-green-100 bg-green-50 px-4 py-3">
-          <p class="text-xs font-semibold uppercase text-green-700">Saldo pendiente</p>
-          <p class="mt-1 text-2xl font-black text-green-800">{{ formatCurrency(trabSeleccionado?.saldoTotal ?? 0) }}</p>
+
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <p class="text-[10px] font-semibold uppercase text-slate-500">Saldo antes</p>
+            <p class="mt-1 text-lg font-bold text-slate-800">{{ formatCurrency(saldoAntesPago) }}</p>
+          </div>
+          <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+            <p class="text-[10px] font-semibold uppercase text-blue-600">A pagar</p>
+            <p class="mt-1 text-lg font-bold text-blue-800">{{ formatCurrency(Number(pagarForm.monto ?? 0)) }}</p>
+          </div>
+          <div class="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+            <p class="text-[10px] font-semibold uppercase text-green-700">Saldo después</p>
+            <p class="mt-1 text-lg font-bold text-green-800">{{ formatCurrency(saldoDespuesPago) }}</p>
+          </div>
+        </div>
+
+        <div v-if="tipoPagoPreview" class="flex justify-center">
+          <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide" :class="tipoPagoPreview === 'TOTAL' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'">
+            Pago {{ tipoPagoPreview === 'TOTAL' ? 'total' : 'parcial' }}
+          </span>
+        </div>
+
+        <div class="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          Un <strong>anticipo</strong> entrega dinero por adelantado y crea deuda. Un <strong>pago</strong> cubre labores ya causadas y reduce el saldo pendiente.
         </div>
 
         <FormField label="Monto a pagar ($) *">
-          <input v-model.number="pagarForm.monto" class="form-input" type="number" min="0" :max="trabSeleccionado?.saldoTotal ?? 0" />
+          <CurrencyInput v-model="pagarForm.monto" placeholder="$0" />
           <button
             type="button"
             class="mt-2 text-xs font-medium text-blue-600 hover:underline"
@@ -327,32 +370,56 @@
       </div>
     </div>
 
-    <!-- Modal anticipo -->
+    <!-- Modal anticipo (en Resumen) -->
     <div
       v-if="modalAnticipo"
       class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
       @click.self="modalAnticipo = false"
     >
       <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
-        <h2 class="font-bold text-gray-800">Anticipo / Préstamo — {{ trabSeleccionado?.nombre }}</h2>
+        <h2 class="font-bold text-gray-800">Anticipo de labor — {{ trabSeleccionado?.nombre }}</h2>
+        <p class="text-sm text-gray-500">Adelanto sobre lo que va a ganar hoy. Se descuenta automáticamente del saldo total.</p>
 
-        <FormField label="Tipo">
-          <select v-model="anticipoForm.tipo" class="form-input">
-            <option value="ANTICIPO">Anticipo</option>
-            <option value="PRESTAMO">Préstamo</option>
-          </select>
-        </FormField>
         <FormField label="Monto ($) *">
-          <input v-model.number="anticipoForm.monto" class="form-input" type="number" min="0" />
+          <CurrencyInput v-model="anticipoForm.monto" placeholder="$0" />
         </FormField>
-        <FormField label="Descripción">
+        <FormField label="Observaciones">
           <input v-model="anticipoForm.descripcion" class="form-input" />
         </FormField>
 
         <div class="flex justify-end gap-2 pt-2">
           <button class="btn-secondary" @click="modalAnticipo = false">Cancelar</button>
           <button class="btn-primary" :disabled="savingAnticipo || !anticipoForm.monto" @click="registrarAnticipo">
-            {{ savingAnticipo ? 'Guardando…' : 'Registrar' }}
+            {{ savingAnticipo ? 'Guardando…' : 'Registrar anticipo' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal préstamo -->
+    <div
+      v-if="modalPrestamo"
+      class="fixed inset-0 bg-black/40 flex items-stretch justify-center z-50 p-0 sm:items-center sm:p-4"
+      @click.self="modalPrestamo = false"
+    >
+      <div class="bg-white rounded-none shadow-xl w-full max-w-md p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+        <h2 class="font-bold text-gray-800">Nuevo préstamo — {{ trabSeleccionado?.nombre }}</h2>
+        <p class="text-sm text-gray-500">Dinero prestado que el trabajador debe devolver mediante abonos.</p>
+
+        <FormField label="Monto a prestar ($) *">
+          <CurrencyInput v-model="prestamoForm.monto" placeholder="$0" />
+        </FormField>
+        <FormField label="Motivo">
+          <input v-model="prestamoForm.motivo" class="form-input" placeholder="Ej: Emergencia personal" />
+        </FormField>
+        <FormField label="Observaciones">
+          <textarea v-model="prestamoForm.observaciones" class="form-input resize-none" rows="2" />
+        </FormField>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button class="btn-secondary" @click="modalPrestamo = false">Cancelar</button>
+          <button class="btn-primary" :disabled="savingPrestamo || !prestamoForm.monto" @click="registrarPrestamo">
+            {{ savingPrestamo ? 'Guardando…' : 'Registrar préstamo' }}
           </button>
         </div>
       </div>
@@ -371,7 +438,7 @@
         </p>
 
         <FormField label="Monto abono ($) *">
-          <input v-model.number="abonoForm.monto" class="form-input" type="number" min="0" />
+          <CurrencyInput v-model="abonoForm.monto" placeholder="$0" />
         </FormField>
         <FormField label="Notas">
           <input v-model="abonoForm.notas" class="form-input" />
@@ -389,7 +456,7 @@
 </template>
 
 <script setup lang="ts">
-import { ClipboardList, HandCoins, RefreshCw, UsersRound, WalletCards } from 'lucide-vue-next'
+import { ClipboardList, HandCoins, Plus, RefreshCw, UsersRound, WalletCards } from 'lucide-vue-next'
 import { formatCurrency, todayISO } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
@@ -401,7 +468,7 @@ const apiResponse = useApiResponse()
 const TABS = [
   { id: 'resumen', label: 'Resumen', icon: UsersRound },
   { id: 'labores', label: 'Labores', icon: ClipboardList },
-  { id: 'anticipos', label: 'Anticipos / Deudas', icon: WalletCards },
+  { id: 'prestamos', label: 'Préstamos', icon: WalletCards },
 ]
 const tabActivo = ref('resumen')
 
@@ -410,9 +477,9 @@ const trabajadores = ref<any[]>([])
 const laboresDisponibles = ref<any[]>([])
 const tiposLabor = ref<any[]>([])
 const laboresHoy = ref<any[]>([])
-const loadingAnt = ref(false)
-const anticipos = ref<any[]>([])
-const filtroTrabAnticipos = ref<number | ''>('')
+const loadingPrestamos = ref(false)
+const prestamos = ref<any[]>([])
+const filtroTrabPrestamos = ref<number | ''>('')
 
 const trabSeleccionado = ref<any>(null)
 const anticipoSeleccionado = ref<any>(null)
@@ -432,11 +499,45 @@ const laborForm = reactive({
 const modalPagar = ref(false)
 const savingPagar = ref(false)
 const pagarForm = reactive({ monto: 0, notas: '' })
+const saldoAntesPago = ref(0)
+const saldoDespuesPago = computed(() =>
+  Math.max(0, saldoAntesPago.value - Number(pagarForm.monto ?? 0)),
+)
+const tipoPagoPreview = computed(() => {
+  const monto = Number(pagarForm.monto ?? 0)
+  if (monto <= 0) return ''
+  return monto >= saldoAntesPago.value ? 'TOTAL' : 'PARCIAL'
+})
+
+function estadoLaborLabel(estado?: string) {
+  const labels: Record<string, string> = {
+    PENDIENTE: 'Pendiente',
+    PARCIAL: 'Parcial',
+    PAGADA: 'Pagada',
+    ANULADA: 'Anulada',
+  }
+  return labels[String(estado ?? 'PENDIENTE')] ?? estado ?? 'Pendiente'
+}
+
+function estadoLaborClass(estado?: string) {
+  const classes: Record<string, string> = {
+    PENDIENTE: 'bg-orange-100 text-orange-700',
+    PARCIAL: 'bg-yellow-100 text-yellow-800',
+    PAGADA: 'bg-green-100 text-green-700',
+    ANULADA: 'bg-gray-100 text-gray-500',
+  }
+  return classes[String(estado ?? 'PENDIENTE')] ?? classes.PENDIENTE
+}
 
 // Anticipo
 const modalAnticipo = ref(false)
 const savingAnticipo = ref(false)
-const anticipoForm = reactive({ tipo: 'ANTICIPO', monto: 0, descripcion: '' })
+const anticipoForm = reactive({ monto: 0, descripcion: '' })
+
+// Préstamo
+const modalPrestamo = ref(false)
+const savingPrestamo = ref(false)
+const prestamoForm = reactive({ monto: 0, motivo: '', observaciones: '' })
 
 // Abono
 const modalAbono = ref(false)
@@ -607,29 +708,34 @@ async function fetchLaboresHoy() {
   }
 }
 
-async function fetchAnticipos() {
-  loadingAnt.value = true
+async function fetchPrestamos() {
+  loadingPrestamos.value = true
   try {
     const params: Record<string, any> = {}
-    if (filtroTrabAnticipos.value) params.trabajadorId = filtroTrabAnticipos.value
+    if (filtroTrabPrestamos.value) params.trabajadorId = filtroTrabPrestamos.value
     const res = await api.get('/trabajadores-ops/anticipos', { params })
     const d = apiResponse.unwrap(res) as any
     const list = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : [])
-    anticipos.value = list.map((a: any) => {
-      const totalAbonos = Array.isArray(a.abonos)
-        ? a.abonos.reduce((sum: number, ab: any) => sum + Number(ab?.monto ?? 0), 0)
-        : 0
+    
+    // Filtrar solo PRESTAMO y calcular saldo pendiente
+    prestamos.value = list
+      .filter((a: any) => a.tipo === 'PRESTAMO')
+      .map((a: any) => {
+        const totalAbonos = Array.isArray(a.abonos)
+          ? a.abonos.reduce((sum: number, ab: any) => sum + Number(ab?.monto ?? 0), 0)
+          : 0
 
-      return {
-        ...a,
-        saldoPendiente: Math.max(0, Number(a?.monto ?? 0) - totalAbonos),
-      }
-    })
+        return {
+          ...a,
+          totalAbonado: totalAbonos,
+          saldoPendiente: Math.max(0, Number(a?.monto ?? 0) - totalAbonos),
+        }
+      })
   } catch {
-    anticipos.value = []
-    notify.error('Error al cargar anticipos')
+    prestamos.value = []
+    notify.error('Error al cargar préstamos')
   } finally {
-    loadingAnt.value = false
+    loadingPrestamos.value = false
   }
 }
 
@@ -663,7 +769,8 @@ async function registrarLabor() {
 
 function abrirPagarModal(t: any) {
   trabSeleccionado.value = t
-  pagarForm.monto = Number(t.saldoTotal ?? 0)
+  saldoAntesPago.value = Number(t.saldoTotal ?? 0)
+  pagarForm.monto = saldoAntesPago.value
   pagarForm.notas = ''
   modalPagar.value = true
 }
@@ -671,20 +778,22 @@ function abrirPagarModal(t: any) {
 async function pagarTrabajador() {
   savingPagar.value = true
   try {
-    const saldo = Number(trabSeleccionado.value?.saldoTotal ?? 0)
+    const saldo = saldoAntesPago.value
     if (Number(pagarForm.monto ?? 0) > saldo) {
       notify.error(`El monto no puede superar el saldo pendiente (${formatCurrency(saldo)})`)
       return
     }
-    await api.post('/trabajadores-ops/pagos', {
+    const res = await api.post('/trabajadores-ops/pagos', {
       trabajadorId: trabSeleccionado.value.id,
       fecha: todayISO(),
       montoBase: pagarForm.monto,
       observaciones: pagarForm.notas || undefined,
     })
-    notify.success('Pago registrado')
+    const d = apiResponse.unwrap(res) as any
+    const etiqueta = d?.tipoPago === 'PARCIAL' ? 'Pago parcial registrado' : 'Pago total registrado'
+    notify.success(`${etiqueta}. Nuevo saldo: ${formatCurrency(d?.saldoDespues ?? 0)}`)
     modalPagar.value = false
-    await fetchTrabajadores()
+    await Promise.all([fetchTrabajadores(), fetchLaboresHoy()])
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al pagar')
   } finally {
@@ -694,7 +803,6 @@ async function pagarTrabajador() {
 
 function abrirAnticipoModal(t: any) {
   trabSeleccionado.value = t
-  anticipoForm.tipo = 'ANTICIPO'
   anticipoForm.monto = 0
   anticipoForm.descripcion = ''
   modalAnticipo.value = true
@@ -705,7 +813,7 @@ async function registrarAnticipo() {
   try {
     await api.post('/trabajadores-ops/anticipos', {
       trabajadorId: trabSeleccionado.value.id,
-      tipo: anticipoForm.tipo,
+      tipo: 'ANTICIPO',
       monto: anticipoForm.monto,
       fecha: todayISO(),
       motivo: anticipoForm.descripcion || undefined,
@@ -713,11 +821,54 @@ async function registrarAnticipo() {
     })
     notify.success('Anticipo registrado')
     modalAnticipo.value = false
-    if (tabActivo.value === 'anticipos') await fetchAnticipos()
+    await fetchTrabajadores()
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al registrar anticipo')
   } finally {
     savingAnticipo.value = false
+  }
+}
+
+function abrirPrestamoModal(t?: any) {
+  if (!t && !trabSeleccionado.value?.id) {
+    notify.error('Selecciona un trabajador primero')
+    return
+  }
+  if (t) {
+    trabSeleccionado.value = t
+  }
+  prestamoForm.monto = 0
+  prestamoForm.motivo = ''
+  prestamoForm.observaciones = ''
+  modalPrestamo.value = true
+}
+
+function abrirPrestamoModalConTrabajador(t: any) {
+  trabSeleccionado.value = t
+  prestamoForm.monto = 0
+  prestamoForm.motivo = ''
+  prestamoForm.observaciones = ''
+  modalPrestamo.value = true
+}
+
+async function registrarPrestamo() {
+  savingPrestamo.value = true
+  try {
+    await api.post('/trabajadores-ops/anticipos', {
+      trabajadorId: trabSeleccionado.value.id,
+      tipo: 'PRESTAMO',
+      monto: prestamoForm.monto,
+      fecha: todayISO(),
+      motivo: prestamoForm.motivo || undefined,
+      observaciones: prestamoForm.observaciones || undefined,
+    })
+    notify.success('Préstamo registrado')
+    modalPrestamo.value = false
+    await fetchPrestamos()
+  } catch (e: any) {
+    notify.error(e?.response?.data?.message ?? 'Error al registrar préstamo')
+  } finally {
+    savingPrestamo.value = false
   }
 }
 
@@ -740,7 +891,7 @@ async function registrarAbono() {
     })
     notify.success('Abono registrado')
     modalAbono.value = false
-    await fetchAnticipos()
+    await fetchPrestamos()
   } catch (e: any) {
     notify.error(e?.response?.data?.message ?? 'Error al registrar abono')
   } finally {
@@ -750,7 +901,7 @@ async function registrarAbono() {
 
 watch(tabActivo, (t) => {
   if (t === 'labores') fetchLaboresHoy()
-  if (t === 'anticipos') fetchAnticipos()
+  if (t === 'prestamos') fetchPrestamos()
 })
 
 onMounted(async () => {

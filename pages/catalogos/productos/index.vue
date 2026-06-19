@@ -53,8 +53,12 @@
           >
             <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ p.codigo }}</td>
             <td class="px-4 py-3 font-medium text-gray-800">{{ p.nombre }}</td>
-            <td class="px-4 py-3 text-gray-600">{{ p.categoria }}</td>
-            <td class="px-4 py-3 text-gray-600">{{ p.unidad }}</td>
+            <td class="px-4 py-3">
+              <ProductUnitBadge :categoria="p.categoria" />
+            </td>
+            <td class="px-4 py-3">
+              <ProductUnitBadge :unidad="p.unidad" />
+            </td>
             <td class="px-4 py-3 text-center">
               <span
                 class="px-2 py-0.5 rounded-full text-xs font-medium"
@@ -113,16 +117,14 @@
             <FormField label="Categoría" required :error="errors.categoria">
               <select v-model="form.categoria" class="form-input">
                 <option value="">Seleccionar categoría…</option>
-                <option value="Normal">Normal</option>
-                <option value="Hielo">Hielo</option>
-                <option value="Picadillo">Picadillo</option>
-                <option value="Botellon">Botellon</option>
-                <option value="Recarga Botellon">Recarga Botellon</option>
-                <option value="Granel">Granel</option>
+                <option v-for="c in CATEGORIAS_PRODUCTO" :key="c.value" :value="c.value">{{ c.label }}</option>
               </select>
             </FormField>
             <FormField label="Unidad" required :error="errors.unidad">
-              <input v-model="form.unidad" type="text" class="form-input" />
+              <select v-model="form.unidad" class="form-input">
+                <option value="">Seleccionar unidad…</option>
+                <option v-for="u in UNIDADES_PRODUCTO" :key="u.value" :value="u.value">{{ u.label }}</option>
+              </select>
             </FormField>
             <FormField label="Descripción">
               <input v-model="form.descripcion" type="text" class="form-input" />
@@ -164,6 +166,7 @@
 
 <script setup lang="ts">
 import { Edit, CheckCircle, Plus, Trash2 } from 'lucide-vue-next'
+import { CATEGORIAS_PRODUCTO, UNIDADES_PRODUCTO } from '~/utils/producto-labels'
 
 definePageMeta({ middleware: 'auth' })
 
