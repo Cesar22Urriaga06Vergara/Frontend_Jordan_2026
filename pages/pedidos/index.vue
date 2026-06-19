@@ -255,7 +255,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { formatDate } from '~/utils/formats'
-import { ordenarPedidosAscendente } from '~/utils/reglas-negocio'
 import { Eye, MapPin, Pencil, Plus, Printer, Trash2 } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -297,7 +296,7 @@ async function loadPedidos() {
 
     const res = await api.get(`/operaciones/pedidos?${params}`)
     const d = apiResponse.unwrap(res) as any
-    pedidos.value = ordenarPedidosAscendente(d.data ?? [], (p) => p.numero ?? '')
+    pedidos.value = d.data ?? []
     pagination.total = d.total ?? 0
     pagination.totalPages = d.totalPages ?? 1
   } catch {

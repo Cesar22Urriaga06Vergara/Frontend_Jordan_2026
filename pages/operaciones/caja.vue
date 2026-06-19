@@ -197,7 +197,7 @@
           </thead>
           <tbody>
             <tr v-for="i in ingresos" :key="i.id" class="border-b border-gray-50">
-              <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">{{ formatDateTime(i.fecha) }}</td>
+              <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">{{ formatDateTime(i.createdAt) }}</td>
               <td class="py-2 pr-3 text-gray-700">
                 {{ i.concepto }}
                 <span v-if="i.observaciones" class="text-xs text-gray-400 block">{{ i.observaciones }}</span>
@@ -242,7 +242,7 @@
           </thead>
           <tbody>
             <tr v-for="e in egresos" :key="e.id" class="border-b border-gray-50">
-              <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">{{ formatDateTime(e.fecha) }}</td>
+              <td class="py-2 pr-3 text-gray-500 whitespace-nowrap">{{ formatDateTime(e.createdAt) }}</td>
               <td class="py-2 pr-3">
                 <span class="px-2 py-0.5 rounded text-xs font-medium" :class="tipoEgresoClass(e.tipo)">
                   {{ tipoEgresoLabel(e.tipo) }}
