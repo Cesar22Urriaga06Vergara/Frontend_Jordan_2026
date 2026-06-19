@@ -101,9 +101,9 @@
                     <HandCoins class="h-3.5 w-3.5" />
                     Pagar
                   </button>
-                  <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="abrirPrestamoModalConTrabajador(t)">
+                  <button class="btn-secondary text-xs py-1 px-2 inline-flex items-center gap-1" @click="abrirAnticipoModal(t)">
                     <WalletCards class="h-3.5 w-3.5" />
-                    Préstamo
+                    Anticipo
                   </button>
                 </div>
               </td>
@@ -837,14 +837,6 @@ function abrirPrestamoModal(t?: any) {
   if (t) {
     trabSeleccionado.value = t
   }
-  prestamoForm.monto = 0
-  prestamoForm.motivo = ''
-  prestamoForm.observaciones = ''
-  modalPrestamo.value = true
-}
-
-function abrirPrestamoModalConTrabajador(t: any) {
-  trabSeleccionado.value = t
   prestamoForm.monto = 0
   prestamoForm.motivo = ''
   prestamoForm.observaciones = ''

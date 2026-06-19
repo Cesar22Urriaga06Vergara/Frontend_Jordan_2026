@@ -237,6 +237,7 @@
               <th class="py-2 pr-3 font-medium">Nota</th>
               <th class="py-2 pr-3 font-medium">Medio</th>
               <th class="py-2 font-medium">Monto</th>
+              <th class="py-2 font-medium">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -254,6 +255,14 @@
               <td class="py-2 pr-3 text-gray-500 min-w-56">{{ e.observaciones || '—' }}</td>
               <td class="py-2 pr-3 text-gray-500">{{ e.medioPago }}</td>
               <td class="py-2 text-right text-red-600 font-semibold whitespace-nowrap">{{ formatCurrency(e.monto) }}</td>
+              <td class="py-2 pr-3 text-right">
+                <button
+                  v-if="puedeEditarEgreso(e)"
+                  class="text-xs text-blue-600 hover:underline"
+                  @click="abrirEditarEgreso(e)">
+                  Editar
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -320,7 +329,7 @@
     >
       <div class="bg-white rounded-none shadow-xl w-full max-w-lg p-4 sm:rounded-lg sm:p-6 space-y-4 max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <div>
-          <h2 class="font-bold text-gray-800">Registrar egreso</h2>
+          <h2 class="font-bold text-gray-800">{{ egresoEditando ? 'Editar egreso' : 'Registrar egreso' }}</h2>
           <p class="text-sm text-gray-500 mt-1">Movimiento manual de salida de caja.</p>
         </div>
 
@@ -356,7 +365,7 @@
         <div class="flex justify-end gap-2 pt-2">
           <button class="btn-secondary" @click="modalEgreso = false" :disabled="savingEgreso">Cancelar</button>
           <button class="btn-primary" @click="registrarEgreso" :disabled="savingEgreso">
-            {{ savingEgreso ? 'Guardando...' : 'Guardar egreso' }}
+            {{ savingEgreso ? 'Guardando...' : egresoEditando ? 'Actualizar egreso' : 'Guardar egreso' }}
           </button>
         </div>
       </div>
@@ -399,6 +408,7 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const modalIngreso = ref(false)
 const modalEgreso = ref(false)
+const egresoEditando = ref<any | null>(null)
 const savingIngreso = ref(false)
 const savingEgreso = ref(false)
 const ingresoForm = reactive({
@@ -509,6 +519,10 @@ function tipoEgresoClass(tipo: string): string {
   return classes[tipo] ?? 'bg-gray-100 text-gray-600'
 }
 
+function puedeEditarEgreso(egreso: any): boolean {
+  return egreso?.tipo === 'OTROS_EGRESOS'
+}
+
 function abrirModalIngreso() {
   ingresoForm.concepto = ''
   ingresoForm.monto = 0
@@ -519,13 +533,29 @@ function abrirModalIngreso() {
   modalIngreso.value = true
 }
 
-function abrirModalEgreso() {
+function resetEgresoForm() {
+  egresoEditando.value = null
   egresoForm.concepto = ''
   egresoForm.monto = 0
   egresoForm.medioPago = 'EFECTIVO'
   egresoForm.referencia = ''
   egresoForm.observaciones = ''
   egresoForm.fecha = todayISO()
+}
+
+function abrirModalEgreso() {
+  resetEgresoForm()
+  modalEgreso.value = true
+}
+
+function abrirEditarEgreso(egreso: any) {
+  egresoEditando.value = egreso
+  egresoForm.concepto = egreso.concepto || ''
+  egresoForm.monto = Number(egreso.monto ?? 0)
+  egresoForm.medioPago = egreso.medioPago || 'EFECTIVO'
+  egresoForm.referencia = egreso.referencia || ''
+  egresoForm.observaciones = egreso.observaciones || ''
+  egresoForm.fecha = egreso.fecha?.split('T')[0] ?? todayISO()
   modalEgreso.value = true
 }
 
@@ -557,19 +587,28 @@ async function registrarEgreso() {
 
   savingEgreso.value = true
   try {
-    await api.post('/operaciones/egresos', {
+    const payload = {
       concepto: egresoForm.concepto,
       monto: Number(egresoForm.monto),
       medioPago: egresoForm.medioPago,
       referencia: egresoForm.referencia || undefined,
       observaciones: egresoForm.observaciones || undefined,
       fecha: egresoForm.fecha,
-    })
-    notify.success('Egreso registrado')
+    }
+
+    if (egresoEditando.value) {
+      await api.patch(`/operaciones/egresos/${egresoEditando.value.id}`, payload)
+      notify.success('Egreso actualizado')
+    } else {
+      await api.post('/operaciones/egresos', payload)
+      notify.success('Egreso registrado')
+    }
+
     modalEgreso.value = false
+    egresoEditando.value = null
     await Promise.all([fetchEstado(), fetchEgresos()])
   } catch (e: any) {
-    notify.error(e?.response?.data?.message ?? 'Error registrando egreso')
+    notify.error(e?.response?.data?.message ?? 'Error guardando egreso')
   } finally {
     savingEgreso.value = false
   }

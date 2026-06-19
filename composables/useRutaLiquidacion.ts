@@ -38,12 +38,12 @@ function toNumberOrZero(value: unknown): number {
 const SALDO_MINIMO_CARTERA = 50
 
 function localISO(date = new Date()): string {
-  // Ajustar por UTC-5 para obtener la fecha operacional correcta
-  const utc5Time = new Date(date.getTime() - 5 * 60 * 60 * 1000)
-  const y = utc5Time.getUTCFullYear()
-  const m = String(utc5Time.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(utc5Time.getUTCDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 }
 
 function addDaysISO(days: number): string {
@@ -317,7 +317,21 @@ export function useRutaLiquidacion() {
     }
   }
 
-  function loadDraft(rutaId: number): boolean {
+  function normalizePedidoIds(ids: unknown[]): number[] {
+    return Array.isArray(ids)
+      ? ids
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+          .sort((a, b) => a - b)
+      : []
+  }
+
+  function arePedidoIdsEqual(a: number[], b: number[]) {
+    if (a.length !== b.length) return false
+    return a.every((value, index) => value === b[index])
+  }
+
+  function loadDraft(rutaId: number, currentPedidoIds: number[] = []): boolean {
     if (typeof window === 'undefined') return false
     const key = getDraftKey(rutaId)
     draftKey.value = key
@@ -333,6 +347,15 @@ export function useRutaLiquidacion() {
         return false
       }
 
+      const draftPedidoIds = normalizePedidoIds(
+        parsed.pedidos.map((pedido: any) => pedido.pedidoId),
+      )
+      const currentIds = normalizePedidoIds(currentPedidoIds)
+      if (!arePedidoIdsEqual(draftPedidoIds, currentIds)) {
+        window.localStorage.removeItem(key)
+        return false
+      }
+
       liqForm.gastosRuta = Number(parsed.gastosRuta ?? 0)
       liqForm.notas = String(parsed.notas ?? '')
       busquedaPedidos.value = ''
@@ -345,7 +368,8 @@ export function useRutaLiquidacion() {
   }
 
   function loadFromRuta(itemsRuta: any[], rutaId: number): boolean {
-    if (loadDraft(rutaId)) {
+    const pedidoIds = (itemsRuta ?? []).map((item: any) => item.pedidoId)
+    if (loadDraft(rutaId, pedidoIds)) {
       return true
     }
     draftKey.value = getDraftKey(rutaId)

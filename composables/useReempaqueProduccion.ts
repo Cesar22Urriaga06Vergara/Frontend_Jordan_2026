@@ -10,8 +10,7 @@ export interface ReempaqueItem {
   cantidadReempacada: number
   observaciones?: string
 }
-
-export interface FiltradasPendientes {
+interface FiltradasPendientes {
   fecha: string
   fechaOrigen?: string
   items: Array<{

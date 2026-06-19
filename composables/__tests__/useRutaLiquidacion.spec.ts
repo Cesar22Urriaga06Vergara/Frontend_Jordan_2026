@@ -80,4 +80,67 @@ describe('useRutaLiquidacion', () => {
     expect(estadoPagoPedidoLabel(formPedido)).toContain('Parcial')
     expect(estadoEntregaLabel(formPedido)).toBe('Entregado parcialmente cobrado')
   })
+
+  it('ignora borradores antiguos de liquidación cuando los pedidos de ruta cambian', () => {
+    const rutaId = 123
+    const draftKey = `ruta-liquidacion-draft-${rutaId}`
+    const staleDraft = {
+      gastosRuta: 0,
+      notas: '',
+      pedidos: [
+        {
+          pedidoId: 1,
+          numero: 'PED-001',
+          clienteNombre: 'Cliente A',
+          montoPedido: 100,
+          detalles: [],
+          estadoEntrega: 'ENTREGADO_PAGADO',
+          tipoPago: 'EFECTIVO',
+          montoEfectivo: 100,
+          montoTransferencia: 0,
+          razonNoEntrega: '',
+          razonReprogramacion: '',
+          fechaReprogramacion: '2026-06-20',
+          observaciones: '',
+        },
+        {
+          pedidoId: 2,
+          numero: 'PED-002',
+          clienteNombre: 'Cliente B',
+          montoPedido: 50,
+          detalles: [],
+          estadoEntrega: 'ENTREGADO_PAGADO',
+          tipoPago: 'EFECTIVO',
+          montoEfectivo: 50,
+          montoTransferencia: 0,
+          razonNoEntrega: '',
+          razonReprogramacion: '',
+          fechaReprogramacion: '2026-06-20',
+          observaciones: '',
+        },
+      ],
+    }
+
+    window.localStorage.setItem(draftKey, JSON.stringify(staleDraft))
+
+    const ctx = useRutaLiquidacion()
+    const loaded = ctx.loadFromRuta(
+      [
+        {
+          pedidoId: 1,
+          pedido: {
+            numero: 'PED-001',
+            cliente: { nombre: 'Cliente A' },
+            detalles: [{ subtotal: 100, producto: { nombre: 'Agua' }, cantidad: 1, precioUnitario: 100 }],
+          },
+        },
+      ],
+      rutaId,
+    )
+
+    expect(loaded).toBe(false)
+    expect(ctx.liqForm.pedidos).toHaveLength(1)
+    expect(ctx.liqForm.pedidos[0].pedidoId).toBe(1)
+    expect(window.localStorage.getItem(draftKey)).toBeNull()
+  })
 })
