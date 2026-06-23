@@ -173,7 +173,7 @@ import { AlertTriangle, ArrowLeft, BarChart3, Boxes, BriefcaseBusiness, Calendar
 import { provide, computed } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import Breadcrumb from '~/components/layout/Breadcrumb.vue'
-import { formatDate, todayISO } from '~/utils/formats'
+import { formatDate, todayISOLocal } from '~/utils/formats'
 import { useLocalState } from '~/composables/useLocalState'
 
 defineOptions({ name: 'DefaultLayout' })
@@ -441,7 +441,7 @@ async function logout() {
 
 async function fetchDiaAbiertoPendiente() {
   try {
-    const fecha = todayISO()
+    const fecha = todayISOLocal()
     const res = await api.get('/diario/dia-abierto-pendiente', { params: { fecha } })
     const pendiente = apiResponse.unwrap(res) as any
     diaAbiertoPendiente.value = pendiente?.fecha && pendiente.fecha !== fecha ? pendiente : null

@@ -618,7 +618,7 @@ import {
   Truck,
   WalletCards,
 } from 'lucide-vue-next'
-import { formatCurrency, formatDate, formatDateTime, formatQuantity, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, formatDateTime, formatQuantity, todayISOLocal } from '~/utils/formats'
 import { defaultTanquesAgua, mapTanquesCatalogo } from '~/utils/tanquesAgua'
 import { useFiltradas } from '~/composables/useFiltradas'
 
@@ -643,7 +643,7 @@ const {
   limpiarFiltradas,
 } = useFiltradas()
 
-const hoy = todayISO()
+const hoy = todayISOLocal()
 const fechaSeleccionada = ref(typeof route.query.fecha === 'string' ? route.query.fecha : hoy)
 const loadingEstado = ref(true)
 const savingApertura = ref(false)
@@ -908,7 +908,7 @@ async function fetchEstado() {
       modoReapertura.value = (
         !!estado.value.apertura &&
         (!!estado.value.cierre || tieneOperaciones) &&
-        fechaSeleccionada.value === todayISO()
+        fechaSeleccionada.value === todayISOLocal()
       )
     } else {
       throw estadoRes.reason

@@ -1,4 +1,4 @@
-import { todayISO } from '~/utils/formats'
+import { todayISOLocal } from '~/utils/formats'
 
 const MENSAJE_RESTRINGIDO =
   "Acceso Restringido: Es necesario iniciar la jornada en 'Gestión de Planta' para operar."
@@ -14,7 +14,7 @@ export function useJornadaOperativa() {
   const jornadaAbierta = computed(() => Boolean(estadoJornada.value?.abierto))
   const jornadaSinIniciar = computed(() => !estadoJornada.value?.apertura)
 
-  async function fetchEstadoJornada(fecha = todayISO()) {
+  async function fetchEstadoJornada(fecha = todayISOLocal()) {
     loadingJornada.value = true
     try {
       const res = await api.get('/diario/estado', { params: { fecha } })
