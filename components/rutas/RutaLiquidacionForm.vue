@@ -327,7 +327,7 @@
 import { computed, ref, toValue } from 'vue'
 import { useRutaLiquidacion } from '~/composables/useRutaLiquidacion'
 import { useMoneyInput } from '~/composables/useMoneyInput'
-import { todayISO, todayISOLocal } from '~/utils/formats'
+import { todayISOLocal } from '~/utils/formats'
 
 const props = defineProps<{
   saving: boolean

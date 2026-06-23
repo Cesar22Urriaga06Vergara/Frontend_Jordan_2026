@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { CheckCircle, Minus, RefreshCw } from 'lucide-vue-next'
-import { formatCurrency, formatDate, formatQuantity, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, formatQuantity, todayISOLocal } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -101,7 +101,7 @@ const api = useApi()
 const notify = useNotification()
 const apiResponse = useApiResponse()
 
-const filtroFecha = ref(todayISO())
+const filtroFecha = ref(todayISOLocal())
 const loadingEstado = ref(true)
 const loadingHistorial = ref(true)
 const estado = ref<any>({ apertura: null, cierre: null })

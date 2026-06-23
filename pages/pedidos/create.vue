@@ -132,7 +132,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useApiResponse } from '~/composables/useApiResponse'
 import { useNotification } from '~/composables/useNotification'
-import { formatCurrency, todayISO } from '~/utils/formats'
+import { formatCurrency, todayISOLocal } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -148,7 +148,7 @@ const trabajadores = ref<any[]>([])
 const form = reactive({
   clienteId: undefined as number | undefined,
   trabajadorId: undefined as number | undefined,
-  fecha: todayISO(),
+  fecha: todayISOLocal(),
   detalles: [] as Array<{ productoId: number | undefined; cantidad: number; precioUnitario: number }>,
   observaciones: '',
 })

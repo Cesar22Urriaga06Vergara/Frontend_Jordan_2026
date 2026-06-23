@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { todayISO } from '~/utils/formats'
+import { todayISOLocal } from '~/utils/formats'
 
 export type ReprogramadoPendiente = {
   id: number
@@ -17,7 +17,7 @@ export function useReprogramadosPendientes() {
   const total = ref(0)
   const paraHoy = ref(0)
   const pedidos = ref<ReprogramadoPendiente[]>([])
-  const fechaReferencia = ref(todayISO())
+  const fechaReferencia = ref(todayISOLocal())
 
   const tienePendientes = computed(() => total.value > 0)
   const tieneParaHoy = computed(() => paraHoy.value > 0)
@@ -40,7 +40,7 @@ export function useReprogramadosPendientes() {
       total.value = Number(data.total ?? 0)
       paraHoy.value = Number(data.paraHoy ?? 0)
       pedidos.value = Array.isArray(data.pedidos) ? data.pedidos : []
-      fechaReferencia.value = data.fechaReferencia ?? fecha ?? todayISO()
+      fechaReferencia.value = data.fechaReferencia ?? fecha ?? todayISOLocal()
     } catch {
       total.value = 0
       paraHoy.value = 0

@@ -437,7 +437,7 @@
 
 <script setup lang="ts">
 import { BarChart3, CheckCircle, DollarSign, HandCoins, Package, ReceiptText, Scale, WalletCards } from 'lucide-vue-next'
-import { formatCurrency, todayISO } from '~/utils/formats'
+import { formatCurrency, todayISOLocal } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -496,9 +496,9 @@ const reportOptions: { label: string; value: ReportType }[] = [
   { label: 'Personalizado', value: 'personalizado' },
 ]
 
-const fechaReferencia = ref(todayISO())
-const filtroDesde = ref(todayISO())
-const filtroHasta = ref(todayISO())
+const fechaReferencia = ref(todayISOLocal())
+const filtroDesde = ref(todayISOLocal())
+const filtroHasta = ref(todayISOLocal())
 const reporteTipo = ref<ReportType>('diario')
 
 const loading = ref(true)
@@ -2120,7 +2120,7 @@ async function fetchAll(): Promise<void> {
 
 onMounted(() => {
   reporteTipo.value = 'diario'
-  fechaReferencia.value = todayISO()
+  fechaReferencia.value = todayISOLocal()
   filtroDesde.value = fechaReferencia.value
   filtroHasta.value = fechaReferencia.value
   void fetchAll()

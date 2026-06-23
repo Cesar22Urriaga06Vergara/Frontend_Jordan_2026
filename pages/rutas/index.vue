@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatDate, todayISO } from '~/utils/formats'
+import { formatDate, todayISOLocal } from '~/utils/formats'
 import { ArrowRight, CheckCircle, ClipboardList, Plus, RefreshCw, Trash2, Truck } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -229,7 +229,7 @@ const filters = reactive({ fechaDesde: '', fechaHasta: '' })
 const modalForm = ref(false)
 const modalEliminarRuta = ref()
 const rutaAEliminar = ref<any>(null)
-const form = reactive({ fecha: todayISO(), domiciliarioId: undefined as number | undefined, observaciones: '' })
+const form = reactive({ fecha: todayISOLocal(), domiciliarioId: undefined as number | undefined, observaciones: '' })
 const errors = reactive({ fecha: '', domiciliarioId: '' })
 const trabajadores = ref<any[]>([])
 
@@ -298,7 +298,7 @@ async function fetchTrabajadores() {
 
 function abrirModal() {
   if (!requireJornadaAbierta()) return
-  form.fecha = todayISO()
+  form.fecha = todayISOLocal()
   form.domiciliarioId = undefined
   form.observaciones = ''
   fetchTrabajadores()

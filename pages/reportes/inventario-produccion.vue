@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Boxes, Droplets, Factory, FileSpreadsheet, FileText, RefreshCw } from 'lucide-vue-next'
-import { todayISO } from '~/utils/formats'
+import { todayISOLocal } from '~/utils/formats'
 import { formatProductoConMeta } from '~/utils/producto-labels'
 
 definePageMeta({ middleware: 'auth' })
@@ -98,8 +98,8 @@ const api = useApi()
 const apiResponse = useApiResponse()
 const notify = useNotification()
 
-const filtroDesde = ref(todayISO())
-const filtroHasta = ref(todayISO())
+const filtroDesde = ref(todayISOLocal())
+const filtroHasta = ref(todayISOLocal())
 const loading = ref(true)
 const estadosDiarios = ref<any[]>([])
 const inventarioActual = ref<any[]>([])

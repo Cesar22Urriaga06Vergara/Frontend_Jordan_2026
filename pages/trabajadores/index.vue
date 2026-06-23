@@ -457,7 +457,7 @@
 
 <script setup lang="ts">
 import { ClipboardList, HandCoins, Plus, RefreshCw, UsersRound, WalletCards } from 'lucide-vue-next'
-import { formatCurrency, todayISO } from '~/utils/formats'
+import { formatCurrency, todayISOLocal } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -491,7 +491,7 @@ const laborForm = reactive({
   laborTipoId: undefined as number | undefined,
   cantidad: 1,
   valorUnitario: undefined as number | undefined,
-  fecha: todayISO(),
+  fecha: todayISOLocal(),
   notas: '',
 })
 
@@ -699,7 +699,7 @@ function onLaborTipoChange() {
 
 async function fetchLaboresHoy() {
   try {
-    const res = await api.get('/trabajadores-ops/labores', { params: { fecha: todayISO() } })
+    const res = await api.get('/trabajadores-ops/labores', { params: { fecha: todayISOLocal() } })
     const d = apiResponse.unwrap(res) as any
     laboresHoy.value = d.items ?? d
   } catch {
@@ -785,7 +785,7 @@ async function pagarTrabajador() {
     }
     const res = await api.post('/trabajadores-ops/pagos', {
       trabajadorId: trabSeleccionado.value.id,
-      fecha: todayISO(),
+      fecha: todayISOLocal(),
       montoBase: pagarForm.monto,
       observaciones: pagarForm.notas || undefined,
     })
@@ -815,7 +815,7 @@ async function registrarAnticipo() {
       trabajadorId: trabSeleccionado.value.id,
       tipo: 'ANTICIPO',
       monto: anticipoForm.monto,
-      fecha: todayISO(),
+      fecha: todayISOLocal(),
       motivo: anticipoForm.descripcion || undefined,
       observaciones: anticipoForm.descripcion || undefined,
     })
@@ -850,7 +850,7 @@ async function registrarPrestamo() {
       trabajadorId: trabSeleccionado.value.id,
       tipo: 'PRESTAMO',
       monto: prestamoForm.monto,
-      fecha: todayISO(),
+      fecha: todayISOLocal(),
       motivo: prestamoForm.motivo || undefined,
       observaciones: prestamoForm.observaciones || undefined,
     })
@@ -878,7 +878,7 @@ async function registrarAbono() {
       trabajadorId: anticipoSeleccionado.value.trabajadorId,
       anticipoPrestamoId: anticipoSeleccionado.value.id,
       monto: abonoForm.monto,
-      fecha: todayISO(),
+      fecha: todayISOLocal(),
       observaciones: abonoForm.notas || undefined,
     })
     notify.success('Abono registrado')

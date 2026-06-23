@@ -372,7 +372,7 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Boxes, Droplets, Factory, Pencil, Plus, RefreshCw } from 'lucide-vue-next'
-import { formatDate, formatQuantity, todayISO } from '~/utils/formats'
+import { formatDate, formatQuantity, todayISOLocal } from '~/utils/formats'
 import { INVENTARIO } from '~/utils/reglas-negocio'
 
 definePageMeta({ middleware: 'auth' })
@@ -381,7 +381,7 @@ const api = useApi()
 const apiResponse = useApiResponse()
 const notify = useNotification()
 
-const filtroFecha = ref(todayISO())
+const filtroFecha = ref(todayISOLocal())
 const loading = ref(true)
 const savingTanque = ref(false)
 const savingAjusteStock = ref(false)

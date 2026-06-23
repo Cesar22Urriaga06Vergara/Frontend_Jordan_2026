@@ -328,7 +328,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, todayISOLocal } from '~/utils/formats'
 import { CreditCard, Eye, Pencil, Plus, ReceiptText, RefreshCw, Trash2, WalletCards } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'auth' })
@@ -358,7 +358,7 @@ const modalNueva = ref(false)
 const ventaEditando = ref<any>(null)
 const nvForm = reactive({
   clienteId: undefined as number | undefined,
-  fechaVenta: todayISO(),
+  fechaVenta: todayISOLocal(),
   notas: '',
   detalles: [] as { productoId: number | undefined; cantidad: number; precioUnitario: number }[],
 })
@@ -452,7 +452,7 @@ function abrirNuevaVenta() {
   if (!requireJornadaAbierta()) return
   ventaEditando.value = null
   nvForm.clienteId = undefined
-  nvForm.fechaVenta = todayISO()
+  nvForm.fechaVenta = todayISOLocal()
   nvForm.notas = ''
   nvForm.detalles = []
   fetchCatalogos()
@@ -467,7 +467,7 @@ async function abrirEditarVenta(v: any) {
     const venta = apiResponse.unwrap(res) as any
     ventaEditando.value = venta
     nvForm.clienteId = venta.clienteId
-    nvForm.fechaVenta = venta.fecha?.split('T')[0] ?? todayISO()
+    nvForm.fechaVenta = venta.fecha?.split('T')[0] ?? todayISOLocal()
     nvForm.notas = ''
     nvForm.detalles = (venta.detalles ?? []).map((d: any) => ({
       productoId: d.productoId,

@@ -374,7 +374,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatCurrency, formatDateTime, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDateTime, todayISOLocal } from '~/utils/formats'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -417,7 +417,7 @@ const ingresoForm = reactive({
   medioPago: 'EFECTIVO',
   referencia: '',
   observaciones: '',
-  fecha: todayISO(),
+  fecha: todayISOLocal(),
 })
 const ingresoErrors = reactive({ concepto: '', monto: '' })
 const egresoForm = reactive({
@@ -426,7 +426,7 @@ const egresoForm = reactive({
   medioPago: 'EFECTIVO',
   referencia: '',
   observaciones: '',
-  fecha: todayISO(),
+  fecha: todayISOLocal(),
 })
 const egresoErrors = reactive({ concepto: '', monto: '' })
 
@@ -445,7 +445,7 @@ function validarEgreso(): boolean {
 async function fetchEstado() {
   loadingEstado.value = true
   try {
-    const res = await api.get(`/diario/estado?fecha=${todayISO()}`)
+    const res = await api.get(`/diario/estado?fecha=${todayISOLocal()}`)
     const d = apiResponse.unwrap(res) as any
     estado.value = d
     resumen.apertura = Number(d.cajaResumen?.apertura ?? d.apertura?.saldoInicial ?? 0)
@@ -462,7 +462,7 @@ async function fetchEstado() {
 async function fetchReporteCaja() {
   loadingReporte.value = true
   try {
-    const res = await api.get('/operaciones/caja/reporte/tipos', { params: { fecha: todayISO() } })
+    const res = await api.get('/operaciones/caja/reporte/tipos', { params: { fecha: todayISOLocal() } })
     reporteCaja.value = apiResponse.unwrap(res) as any
   } catch {
     reporteCaja.value = { items: [], totalIngresos: 0, totalEgresos: 0, neto: 0 }
@@ -474,7 +474,7 @@ async function fetchReporteCaja() {
 async function fetchIngresos() {
   loadingIngresos.value = true
   try {
-    const res = await api.get('/operaciones/caja/ingresos', { params: { fecha: todayISO(), limit: 100 } })
+    const res = await api.get('/operaciones/caja/ingresos', { params: { fecha: todayISOLocal(), limit: 100 } })
     const d = apiResponse.unwrap(res) as any
     ingresos.value = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : [])
   } catch {
@@ -488,7 +488,7 @@ async function fetchIngresos() {
 async function fetchEgresos() {
   loadingEgresos.value = true
   try {
-    const res = await api.get('/operaciones/egresos', { params: { fecha: todayISO(), limit: 100 } })
+    const res = await api.get('/operaciones/egresos', { params: { fecha: todayISOLocal(), limit: 100 } })
     const d = apiResponse.unwrap(res) as any
     egresos.value = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : [])
   } catch {
@@ -529,7 +529,7 @@ function abrirModalIngreso() {
   ingresoForm.medioPago = 'EFECTIVO'
   ingresoForm.referencia = ''
   ingresoForm.observaciones = ''
-  ingresoForm.fecha = todayISO()
+  ingresoForm.fecha = todayISOLocal()
   modalIngreso.value = true
 }
 
@@ -540,7 +540,7 @@ function resetEgresoForm() {
   egresoForm.medioPago = 'EFECTIVO'
   egresoForm.referencia = ''
   egresoForm.observaciones = ''
-  egresoForm.fecha = todayISO()
+  egresoForm.fecha = todayISOLocal()
 }
 
 function abrirModalEgreso() {
@@ -555,7 +555,7 @@ function abrirEditarEgreso(egreso: any) {
   egresoForm.medioPago = egreso.medioPago || 'EFECTIVO'
   egresoForm.referencia = egreso.referencia || ''
   egresoForm.observaciones = egreso.observaciones || ''
-  egresoForm.fecha = egreso.fecha?.split('T')[0] ?? todayISO()
+  egresoForm.fecha = egreso.fecha?.split('T')[0] ?? todayISOLocal()
   modalEgreso.value = true
 }
 

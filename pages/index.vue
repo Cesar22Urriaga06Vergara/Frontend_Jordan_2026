@@ -166,7 +166,7 @@ import {
   Truck,
   WalletCards,
 } from 'lucide-vue-next'
-import { formatCurrency, formatDate, todayISO } from '~/utils/formats'
+import { formatCurrency, formatDate, todayISOLocal } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -180,7 +180,7 @@ const diaAbiertoPendiente = ref<any>(null)
 const stockBajo = ref<any[]>([])
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-const today = todayISO()
+const today = todayISOLocal()
 const todayLabel = new Intl.DateTimeFormat('es-CO', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
 }).format(new Date())

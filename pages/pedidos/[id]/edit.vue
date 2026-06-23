@@ -96,7 +96,7 @@ import { useRoute } from '#imports'
 import { useApi } from '~/composables/useApi'
 import { useApiResponse } from '~/composables/useApiResponse'
 import { useNotification } from '~/composables/useNotification'
-import { formatCurrency, todayISO } from '~/utils/formats'
+import { formatCurrency, todayISOLocal } from '~/utils/formats'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -113,7 +113,7 @@ const trabajadores = ref<any[]>([])
 const form = reactive({
   clienteId: undefined as number | undefined,
   trabajadorId: undefined as number | undefined,
-  fecha: todayISO(),
+  fecha: todayISOLocal(),
   detalles: [] as Array<{ productoId: number | undefined; cantidad: number; precioUnitario: number }>,
   observaciones: '',
 })
@@ -161,7 +161,7 @@ async function fetchPedido() {
     const pedido = apiResponse.unwrap(res) as any
     form.clienteId = pedido.clienteId
     form.trabajadorId = pedido.trabajadorId
-    form.fecha = pedido.fecha?.split('T')[0] ?? todayISO()
+    form.fecha = pedido.fecha?.split('T')[0] ?? todayISOLocal()
     form.observaciones = pedido.observaciones ?? ''
     form.detalles = (pedido.detalles ?? []).map((detalle: any) => ({
       productoId: detalle.productoId,
